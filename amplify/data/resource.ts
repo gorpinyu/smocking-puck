@@ -15,7 +15,12 @@ const schema = a.schema({
         .integer()
         .required()
         .default(0)
-        .authorization((allow) => [allow.authenticated().to(['read', 'update'])]),
+        .authorization((allow) => [
+          // Field-level rules fully replace (not merge with) the model-level
+          // rules for this field, so Admins must be re-granted explicitly here.
+          allow.authenticated().to(['read', 'update']),
+          allow.group('Admins'),
+        ]),
     })
     .authorization((allow) => [
       allow.authenticated().to(['read']),
@@ -43,3 +48,4 @@ export const data = defineData({
     defaultAuthorizationMode: 'userPool',
   },
 });
+

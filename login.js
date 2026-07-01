@@ -4,6 +4,20 @@ import { signUp, confirmSignUp, resendSignUpCode, signIn, signInWithRedirect } f
 let pendingEmail = null;
 let pendingPassword = null;
 
+// Attached immediately (not gated behind the async checks below) so an early
+// submit is handled by our code, not a native full-page form submission that
+// silently drops the data.
+document.getElementById('tab-login').addEventListener('click', () => switchTab('login'));
+document.getElementById('tab-register').addEventListener('click', () => switchTab('register'));
+document.getElementById('goToRegister').addEventListener('click', (e) => { e.preventDefault(); switchTab('register'); });
+document.getElementById('goToLogin').addEventListener('click', (e) => { e.preventDefault(); switchTab('login'); });
+
+document.getElementById('loginForm').addEventListener('submit', handleLogin);
+document.getElementById('registerForm').addEventListener('submit', handleRegister);
+document.getElementById('verifyForm').addEventListener('submit', handleVerify);
+document.getElementById('resendCode').addEventListener('click', handleResend);
+document.getElementById('googleBtn').addEventListener('click', () => signInWithRedirect({ provider: 'Google' }));
+
 (async () => {
   if (await isLoggedIn()) {
     window.location.href = 'sessions.html';
@@ -12,17 +26,6 @@ let pendingPassword = null;
   await renderNav();
 
   if (new URLSearchParams(window.location.search).get('tab') === 'register') switchTab('register');
-
-  document.getElementById('tab-login').addEventListener('click', () => switchTab('login'));
-  document.getElementById('tab-register').addEventListener('click', () => switchTab('register'));
-  document.getElementById('goToRegister').addEventListener('click', (e) => { e.preventDefault(); switchTab('register'); });
-  document.getElementById('goToLogin').addEventListener('click', (e) => { e.preventDefault(); switchTab('login'); });
-
-  document.getElementById('loginForm').addEventListener('submit', handleLogin);
-  document.getElementById('registerForm').addEventListener('submit', handleRegister);
-  document.getElementById('verifyForm').addEventListener('submit', handleVerify);
-  document.getElementById('resendCode').addEventListener('click', handleResend);
-  document.getElementById('googleBtn').addEventListener('click', () => signInWithRedirect({ provider: 'Google' }));
 })();
 
 function switchTab(tab) {

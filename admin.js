@@ -1,5 +1,10 @@
 import { client, isAdmin, escapeHtml, formatDate, formatTime, todayISO, isPastDate, renderNav } from './app.js';
 
+// Attached immediately (not gated behind the async admin check below) so a
+// submit before that check resolves is handled by our code, not a native
+// full-page form submission that silently drops the data.
+document.getElementById('addForm').addEventListener('submit', addSession);
+
 (async () => {
   const admin = await isAdmin();
 
@@ -13,7 +18,6 @@ import { client, isAdmin, escapeHtml, formatDate, formatTime, todayISO, isPastDa
   await renderNav();
 
   document.getElementById('newDate').min = todayISO();
-  document.getElementById('addForm').addEventListener('submit', addSession);
 
   await renderTable();
 })();
