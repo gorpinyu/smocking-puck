@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Smocking Puck</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ACCESS DENIED (shown if not signed in / not an Admin) -->
+  <div class="password-gate" id="accessDenied" style="display:none">
+    <div class="form-card" style="margin:0">
+      <p class="form-title">🔒 Admin Access</p>
+      <p style="text-align:center;color:#666">
+        You need to be signed in with an admin account to view this page.
+      </p>
+      <a href="login.html" class="btn btn-primary form-btn" style="margin-top:1rem;display:block;text-align:center">Log In</a>
+    </div>
+  </div>
+
+  <!-- DASHBOARD (hidden until Admins-group membership is confirmed) -->
+  <div id="dashboard" style="display:none">
+
+    <div id="nav-placeholder"></div>
+
+    <main>
+      <div class="page-header">
+        <h1>Admin Dashboard ⚙️</h1>
+        <p>Manage sessions and view bookings.</p>
+      </div>
+
+      <div class="container admin-sections">
+
+        <!-- ADD SESSION -->
+        <div class="card">
+          <p class="admin-section-title">Add New Session</p>
+          <div class="alert alert-success" id="addSuccess" style="display:none">Session added successfully!</div>
+          <div class="alert alert-error"   id="addError"   style="display:none"></div>
+
+          <form class="admin-form" id="addForm">
+            <div class="form-group">
+              <label for="newDate">Date</label>
+              <input type="date" id="newDate" required />
+            </div>
+            <div class="form-group">
+              <label for="newTime">Time</label>
+              <input type="time" id="newTime" required />
+            </div>
+            <div class="form-group">
+              <label for="newDuration">Duration (min)</label>
+              <input type="number" id="newDuration" value="60" min="15" max="240" required />
+            </div>
+            <div class="form-group">
+              <label for="newCapacity">Max Spots</label>
+              <input type="number" id="newCapacity" value="10" min="1" max="50" required />
+            </div>
+            <div class="form-group full-width">
+              <label for="newTitle">Session Title</label>
+              <input type="text" id="newTitle" value="Shooting Skills Session" required />
+            </div>
+            <div class="form-group full-width" style="text-align:right">
+              <button type="submit" class="btn btn-primary">Add Session</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- ALL SESSIONS TABLE -->
+        <div class="card">
+          <p class="admin-section-title">All Sessions</p>
+          <div id="sessionsTableWrap"></div>
+        </div>
+
+      </div>
+    </main>
+
+    <footer>
+      <strong>Smocking Puck</strong> &mdash; Admin Dashboard
+    </footer>
+  </div>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

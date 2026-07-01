@@ -1,0 +1,1 @@
+I want to have. Teenager friendly website. To book and cancel. Hockey skills sessions. The main reason for users is to come and improve shooting skills. The website should be friendly for any type of mobile phone devices. Use light blue colors. 
