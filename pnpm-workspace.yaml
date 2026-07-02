@@ -2,3 +2,12 @@ allowBuilds:
   '@parcel/watcher': true
   core-js: true
   esbuild: true
+# Lockfile was generated on Windows; without this, pnpm only locks the
+# Windows-native esbuild binary and Amplify Hosting's Linux CI build
+# silently fails when vite invokes esbuild.
+supportedArchitectures:
+  os:
+    - win32
+    - linux
+  cpu:
+    - x64
