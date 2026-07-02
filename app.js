@@ -53,9 +53,13 @@ export async function getCurrentUser() {
   console.log('getCurrentUser: start');
   try {
     console.log('getCurrentUser: calling amplifyGetCurrentUser()');
-    await withTimeout(amplifyGetCurrentUser(), 6000);
+    // Temporarily bumped way up (diagnostic only) to find out whether the
+    // exchange ever completes if given more time, since the previous 6s
+    // timeout was causing sessions.js's login-gate to redirect away from
+    // the code-bearing URL before Amplify's process could finish.
+    await withTimeout(amplifyGetCurrentUser(), 45000);
     console.log('getCurrentUser: amplifyGetCurrentUser() resolved, calling fetchUserAttributes()');
-    const attrs = await withTimeout(fetchUserAttributes(), 6000);
+    const attrs = await withTimeout(fetchUserAttributes(), 45000);
     console.log('getCurrentUser: fetchUserAttributes() resolved', attrs);
     cachedUser = { id: attrs.sub, name: attrs.name || attrs.email, email: attrs.email };
   } catch (err) {
