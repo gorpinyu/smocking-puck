@@ -6,6 +6,7 @@ import {
   signOut as amplifySignOut,
 } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/data';
+import { Hub } from 'aws-amplify/utils';
 import outputs from './amplify_outputs.json';
 
 Amplify.configure(outputs);
@@ -13,6 +14,16 @@ Amplify.configure(outputs);
 export const client = generateClient();
 
 let cachedUser; // memoized per page load — avoids re-fetching attributes on every call
+
+// signInWithRedirect (Google) completes asynchronously after the browser
+// lands back on the app - without this, the nav can render before the
+// session is established and get stuck showing "Login" instead of "Logout".
+Hub.listen('auth', ({ payload }) => {
+  if (payload.event === 'signInWithRedirect') {
+    cachedUser = undefined;
+    renderNav();
+  }
+});
 
 export async function getCurrentUser() {
   if (cachedUser !== undefined) return cachedUser;
