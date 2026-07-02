@@ -27,6 +27,10 @@ let cachedUser; // memoized per page load — avoids re-fetching attributes on e
 Hub.listen('auth', ({ payload }) => {
   if (payload.event === 'signInWithRedirect') {
     window.location.replace(window.location.pathname);
+  } else if (payload.event === 'signInWithRedirect_failure') {
+    // Logged (not just swallowed) so a failed OAuth code exchange is
+    // diagnosable instead of silently leaving the page looking logged-out.
+    console.error('Google sign-in redirect failed:', payload.data);
   }
 });
 
@@ -36,7 +40,11 @@ export async function getCurrentUser() {
     await amplifyGetCurrentUser();
     const attrs = await fetchUserAttributes();
     cachedUser = { id: attrs.sub, name: attrs.name || attrs.email, email: attrs.email };
-  } catch {
+  } catch (err) {
+    // Logged at debug level: "no current user" is the expected/common case
+    // for guests, but keeping the real error visible (instead of a bare
+    // catch) is what actually let us diagnose the redirect failure below.
+    console.debug('getCurrentUser: no authenticated user', err);
     cachedUser = null;
   }
   return cachedUser;
