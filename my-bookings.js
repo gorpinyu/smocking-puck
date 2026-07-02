@@ -1,4 +1,4 @@
-import { client, isLoggedIn, escapeHtml, formatDate, formatTime, isPastDate, renderNav, renderFooter } from './app.js';
+import { client, isLoggedIn, escapeHtml, formatDate, formatTime, isPastDate, bookingModeLabel, renderNav, renderFooter } from './app.js';
 
 (async () => {
   if (!(await isLoggedIn())) {
@@ -45,21 +45,20 @@ async function renderBookings() {
         <div class="session-meta">
           ⏰ ${formatTime(s.time)} &nbsp;·&nbsp; ⏱ ${s.duration} min
         </div>
-        ${booking.playerName ? `<div class="session-meta">👤 ${players}</div>` : ''}
+        ${booking.playerName ? `<div class="session-meta">🏒 ${bookingModeLabel(booking.mode)} &nbsp;·&nbsp; 👤 ${players}</div>` : ''}
       </div>
-      <button class="btn btn-danger btn-sm" data-action="cancel" data-booking-id="${booking.id}" data-session-id="${s.id}" data-spots="${booking.playerName2 ? 2 : 1}">Cancel</button>
+      <button class="btn btn-danger btn-sm" data-action="cancel" data-booking-id="${booking.id}" data-session-id="${s.id}">Cancel</button>
     </div>`;
   }).join('');
 
   list.querySelectorAll('[data-action="cancel"]').forEach((btn) => {
-    btn.addEventListener('click', () => cancelBooking(btn.dataset.bookingId, btn.dataset.sessionId, parseInt(btn.dataset.spots)));
+    btn.addEventListener('click', () => cancelBooking(btn.dataset.bookingId, btn.dataset.sessionId));
   });
 }
 
-async function cancelBooking(bookingId, sessionId, spots) {
+async function cancelBooking(bookingId, sessionId) {
   if (!confirm('Cancel this session booking?')) return;
-  const { data: s } = await client.models.Session.get({ id: sessionId });
   await client.models.Booking.delete({ id: bookingId });
-  if (s) await client.models.Session.update({ id: sessionId, bookedCount: Math.max(0, s.bookedCount - spots) });
+  await client.models.Session.update({ id: sessionId, booked: false });
   await renderBookings();
 }

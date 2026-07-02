@@ -108,8 +108,8 @@ export const formatDate = (dateStr) => {
   });
 };
 
-// Session mode is derived from capacity, not stored: 1 spot = 1-on-1, 2 = 1-on-2.
-export const sessionMode = (maxCapacity) => (maxCapacity >= 2 ? '1-on-2' : '1-on-1');
+// The booker picks the format at booking time - sessions have no fixed mode.
+export const bookingModeLabel = (mode) => (mode === 'ONE_ON_TWO' ? '1-on-2' : '1-on-1');
 
 export const formatTime = (timeStr) => {
   const [h, min] = timeStr.split(':').map(Number);

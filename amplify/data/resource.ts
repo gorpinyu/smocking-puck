@@ -7,14 +7,14 @@ const schema = a.schema({
       date: a.string().required(), // 'YYYY-MM-DD'
       time: a.string().required(), // 'HH:MM'
       duration: a.integer().required(),
-      maxCapacity: a.integer().required(),
-      // Maintained client-side (create/cancel booking also updates this) so
-      // any signed-in user can read "spots left" without needing access to
-      // every other user's individual Booking records.
-      bookedCount: a
-        .integer()
+      // A session is a single coach time-slot: one booking (1-on-1 or 1-on-2,
+      // the booker's choice) takes the whole thing. Maintained client-side
+      // (create/cancel booking also updates this) so any signed-in user can
+      // read status without needing access to every other user's Booking.
+      booked: a
+        .boolean()
         .required()
-        .default(0)
+        .default(false)
         .authorization((allow) => [
           // Field-level rules fully replace (not merge with) the model-level
           // rules for this field, so Admins must be re-granted explicitly here.
@@ -37,9 +37,11 @@ const schema = a.schema({
       sessionDate: a.string().required(), // denormalized for filtering past bookings
       userName: a.string().required(), // denormalized at booking time for the admin "Who" list
       userEmail: a.string().required(),
+      // Picked by the booker, not the admin - a session has no fixed format.
+      mode: a.enum(['ONE_ON_ONE', 'ONE_ON_TWO']),
       playerName: a.string().required(),
-      // Optional second player on a 1-on-2 booking - when set, the booking
-      // consumes 2 spots (the single source of truth for bookedCount math).
+      // Optional even on a 1-on-2 booking - the format is the booker's
+      // choice regardless of whether a second player is actually named.
       playerName2: a.string(),
     })
     .authorization((allow) => [

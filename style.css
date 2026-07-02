@@ -457,16 +457,6 @@ main { flex: 1; }
   align-items: center;
 }
 
-.spots {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--c-600);
-  background: var(--c-50);
-  padding: 0.22rem 0.6rem;
-  border-radius: 6px;
-}
-.spots.full { background: #fce4ec; color: #c62828; }
-
 .badge {
   display: inline-block;
   padding: 0.3rem 0.85rem;
@@ -483,18 +473,6 @@ main { flex: 1; }
 .badge-full {
   background: linear-gradient(135deg, #fce4ec, #f8bbd0);
   color: #880e4f;
-}
-
-.mode-badge {
-  font-size: 0.72rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: var(--c-700);
-  background: var(--c-100);
-  padding: 0.25rem 0.65rem;
-  border-radius: 20px;
-  white-space: nowrap;
 }
 
 /* ── BOOKING FORM (inline in session card) ───────────────────────────────── */

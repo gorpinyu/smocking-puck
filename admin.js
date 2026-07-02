@@ -1,4 +1,4 @@
-import { client, isAdmin, escapeHtml, formatDate, formatTime, todayISO, isPastDate, sessionMode, renderNav, renderFooter } from './app.js';
+import { client, isAdmin, escapeHtml, formatDate, formatTime, todayISO, isPastDate, bookingModeLabel, renderNav, renderFooter } from './app.js';
 
 // Attached immediately (not gated behind the async admin check below) so a
 // submit before that check resolves is handled by our code, not a native
@@ -41,7 +41,7 @@ async function renderTable() {
           const players = b.playerName2
             ? `${escapeHtml(b.playerName)} &amp; ${escapeHtml(b.playerName2)}`
             : escapeHtml(b.playerName || b.userName);
-          return `${players} &lt;${escapeHtml(b.userEmail)}&gt;`;
+          return `${bookingModeLabel(b.mode)}: ${players} &lt;${escapeHtml(b.userEmail)}&gt;`;
         }).join('<br>')
       : '<span style="color:#bbb">—</span>';
 
@@ -49,8 +49,7 @@ async function renderTable() {
       <td>${formatDate(s.date)}</td>
       <td>${formatTime(s.time)}</td>
       <td>${escapeHtml(s.title)}</td>
-      <td>${sessionMode(s.maxCapacity)}</td>
-      <td style="text-align:center">${s.bookedCount} / ${s.maxCapacity}</td>
+      <td style="text-align:center">${s.booked ? 'Booked' : 'Open'}</td>
       <td class="who">${who}</td>
       <td><button class="btn btn-danger btn-sm" data-action="delete" data-id="${s.id}">Delete</button></td>
     </tr>`;
@@ -63,8 +62,7 @@ async function renderTable() {
           <th>Date</th>
           <th>Time</th>
           <th>Title</th>
-          <th>Mode</th>
-          <th>Booked</th>
+          <th>Status</th>
           <th>Who</th>
           <th></th>
         </tr>
@@ -85,7 +83,6 @@ async function addSession(e) {
   const date = document.getElementById('newDate').value;
   const time = document.getElementById('newTime').value;
   const duration = parseInt(document.getElementById('newDuration').value);
-  const maxCapacity = parseInt(document.getElementById('newMode').value);
   const title = document.getElementById('newTitle').value.trim();
 
   if (isPastDate(date)) {
@@ -95,7 +92,7 @@ async function addSession(e) {
     return;
   }
 
-  await client.models.Session.create({ title, date, time, duration, maxCapacity, bookedCount: 0 });
+  await client.models.Session.create({ title, date, time, duration, booked: false });
 
   document.getElementById('addSuccess').style.display = 'block';
   document.getElementById('addForm').reset();
