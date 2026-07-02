@@ -4,6 +4,7 @@ import {
   fetchUserAttributes,
   fetchAuthSession,
   signOut as amplifySignOut,
+  signInWithRedirect,
 } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/data';
 import { Hub } from 'aws-amplify/utils';
@@ -11,6 +12,14 @@ import outputs from './amplify_outputs.json';
 
 Amplify.configure(outputs);
 console.log('app.js: Amplify configured, module loaded');
+
+// Real (not discardable) reference to signInWithRedirect, not a call - per-
+// page code-splitting can otherwise tree-shake the OAuth-redirect-completion
+// code out of any page bundle that doesn't reference this import, which left
+// sessions.html (the actual Google OAuth callback target, per
+// amplify/auth/resource.ts's callbackUrls) unable to ever process its own
+// ?code= - only login.js referenced this before, not the shared app.js.
+window.__amplifySignInWithRedirect = signInWithRedirect;
 
 export const client = generateClient();
 
