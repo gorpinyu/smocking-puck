@@ -17,11 +17,11 @@ export const auth = defineAuth({
       },
       callbackUrls: [
         'http://localhost:5173/sessions.html',
-        'https://main.PLACEHOLDER.amplifyapp.com/sessions.html',
+        'https://main.d17nxebfgblbv7.amplifyapp.com/sessions.html',
       ],
       logoutUrls: [
         'http://localhost:5173/index.html',
-        'https://main.PLACEHOLDER.amplifyapp.com/index.html',
+        'https://main.d17nxebfgblbv7.amplifyapp.com/index.html',
       ],
     },
   },
