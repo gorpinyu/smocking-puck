@@ -10,7 +10,7 @@ import { Hub } from 'aws-amplify/utils';
 import outputs from './amplify_outputs.json';
 
 Amplify.configure(outputs);
-console.debug('app.js: Amplify configured, module loaded');
+console.log('app.js: Amplify configured, module loaded');
 
 export const client = generateClient();
 
@@ -26,7 +26,7 @@ let cachedUser; // memoized per page load — avoids re-fetching attributes on e
 // that single-use code a second time, which fails and leaves the page stuck
 // looking logged-out (silently, since getCurrentUser()'s catch swallows it).
 Hub.listen('auth', ({ payload }) => {
-  console.debug('Hub auth event:', payload.event);
+  console.log('Hub auth event:', payload.event);
   if (payload.event === 'signInWithRedirect') {
     window.location.replace(window.location.pathname);
   } else if (payload.event === 'signInWithRedirect_failure') {
@@ -38,19 +38,19 @@ Hub.listen('auth', ({ payload }) => {
 
 export async function getCurrentUser() {
   if (cachedUser !== undefined) return cachedUser;
-  console.debug('getCurrentUser: start');
+  console.log('getCurrentUser: start');
   try {
-    console.debug('getCurrentUser: calling amplifyGetCurrentUser()');
+    console.log('getCurrentUser: calling amplifyGetCurrentUser()');
     await amplifyGetCurrentUser();
-    console.debug('getCurrentUser: amplifyGetCurrentUser() resolved, calling fetchUserAttributes()');
+    console.log('getCurrentUser: amplifyGetCurrentUser() resolved, calling fetchUserAttributes()');
     const attrs = await fetchUserAttributes();
-    console.debug('getCurrentUser: fetchUserAttributes() resolved', attrs);
+    console.log('getCurrentUser: fetchUserAttributes() resolved', attrs);
     cachedUser = { id: attrs.sub, name: attrs.name || attrs.email, email: attrs.email };
   } catch (err) {
     // Logged at debug level: "no current user" is the expected/common case
     // for guests, but keeping the real error visible (instead of a bare
     // catch) is what actually let us diagnose the redirect failure below.
-    console.debug('getCurrentUser: no authenticated user', err);
+    console.log('getCurrentUser: no authenticated user', err);
     cachedUser = null;
   }
   return cachedUser;
@@ -104,12 +104,12 @@ export const formatTime = (timeStr) => {
 };
 
 export async function renderNav() {
-  console.debug('renderNav: start');
+  console.log('renderNav: start');
   const placeholder = document.getElementById('nav-placeholder');
   if (!placeholder) return;
 
   const user = await getCurrentUser();
-  console.debug('renderNav: getCurrentUser() resolved', user);
+  console.log('renderNav: getCurrentUser() resolved', user);
   const page = window.location.pathname.split('/').pop() || 'index.html';
   const active = (p) => (page === p ? ' class="active"' : '');
   const firstName = user ? escapeHtml(user.name.split(' ')[0]) : '';
