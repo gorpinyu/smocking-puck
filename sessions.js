@@ -1,7 +1,8 @@
-import { client, getCurrentUser, escapeHtml, formatDate, formatTime, isPastDate, renderNav } from './app.js';
+import { client, getCurrentUser, escapeHtml, formatDate, formatTime, isPastDate, renderNav, renderFooter } from './app.js';
 
 (async () => {
   await renderNav();
+  await renderFooter();
   await renderSessions();
 })();
 

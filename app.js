@@ -127,3 +127,43 @@ export async function renderNav() {
     btn.addEventListener('click', logout);
   });
 }
+
+export async function renderFooter() {
+  const placeholder = document.getElementById('footer-placeholder');
+  if (!placeholder) return;
+
+  placeholder.innerHTML = `
+    <footer>
+      <div class="footer-inner">
+        <div class="footer-col footer-brand">
+          <a href="index.html" class="footer-logo">🏒 Smocking Puck</a>
+          <p>Hockey Skills Sessions</p>
+        </div>
+        <div class="footer-col">
+          <p class="footer-heading">Quick Links</p>
+          <ul>
+            <li><a href="sessions.html">Sessions</a></li>
+            <li><a href="my-bookings.html">My Bookings</a></li>
+            <li><a href="login.html">Login / Register</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <p class="footer-heading">Contact</p>
+          <ul>
+            <li><a href="mailto:hello@smockingpuck.com">hello@smockingpuck.com</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <p class="footer-heading">Follow Us</p>
+          <ul>
+            <li><a href="#">📸 Instagram</a></li>
+            <li><a href="#">▶️ YouTube</a></li>
+            <li><a href="#">🎵 TikTok</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        &copy; 2026 Smocking Puck. All rights reserved.
+      </div>
+    </footer>`;
+}

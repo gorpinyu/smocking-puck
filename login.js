@@ -1,4 +1,4 @@
-import { isLoggedIn, renderNav } from './app.js';
+import { isLoggedIn, renderNav, renderFooter } from './app.js';
 import { signUp, confirmSignUp, resendSignUpCode, signIn, signInWithRedirect } from 'aws-amplify/auth';
 
 let pendingEmail = null;
@@ -24,6 +24,7 @@ document.getElementById('googleBtn').addEventListener('click', () => signInWithR
     return;
   }
   await renderNav();
+  await renderFooter();
 
   if (new URLSearchParams(window.location.search).get('tab') === 'register') switchTab('register');
 })();

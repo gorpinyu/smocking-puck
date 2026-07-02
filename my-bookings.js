@@ -1,4 +1,4 @@
-import { client, isLoggedIn, escapeHtml, formatDate, formatTime, isPastDate, renderNav } from './app.js';
+import { client, isLoggedIn, escapeHtml, formatDate, formatTime, isPastDate, renderNav, renderFooter } from './app.js';
 
 (async () => {
   if (!(await isLoggedIn())) {
@@ -6,6 +6,7 @@ import { client, isLoggedIn, escapeHtml, formatDate, formatTime, isPastDate, ren
     return;
   }
   await renderNav();
+  await renderFooter();
   await renderBookings();
 })();
 

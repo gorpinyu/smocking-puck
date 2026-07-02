@@ -1,4 +1,4 @@
-import { client, isAdmin, escapeHtml, formatDate, formatTime, todayISO, isPastDate, renderNav } from './app.js';
+import { client, isAdmin, escapeHtml, formatDate, formatTime, todayISO, isPastDate, renderNav, renderFooter } from './app.js';
 
 // Attached immediately (not gated behind the async admin check below) so a
 // submit before that check resolves is handled by our code, not a native
@@ -16,6 +16,7 @@ document.getElementById('addForm').addEventListener('submit', addSession);
 
   document.getElementById('dashboard').style.display = 'block';
   await renderNav();
+  await renderFooter();
 
   document.getElementById('newDate').min = todayISO();
 

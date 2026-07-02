@@ -485,6 +485,25 @@ main { flex: 1; }
   color: #880e4f;
 }
 
+/* ── NEXT UP (HOME) ──────────────────────────────────────────────────────── */
+.next-up-section {
+  padding: 4.5rem 1.5rem;
+  text-align: center;
+}
+
+.next-up-section .sessions-grid {
+  max-width: 1000px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.next-up-empty {
+  font-size: 0.97rem;
+  color: var(--muted);
+}
+
+.next-up-cta { margin-top: 2.5rem; }
+
 /* ── HOW IT WORKS ────────────────────────────────────────────────────────── */
 .steps-section {
   background: linear-gradient(180deg, #F0F8FF 0%, #E1F5FE 100%);
@@ -505,7 +524,8 @@ main { flex: 1; }
   margin-bottom: 1rem;
 }
 
-.steps-section h2 {
+.steps-section h2,
+.next-up-section h2 {
   font-size: clamp(1.6rem, 4vw, 2.25rem);
   font-weight: 900;
   color: var(--c-900);
@@ -808,11 +828,67 @@ main { flex: 1; }
 footer {
   background: linear-gradient(135deg, var(--c-dark) 0%, #0D47A1 100%);
   color: rgba(255,255,255,0.55);
-  text-align: center;
-  padding: 1.75rem 1rem;
   font-size: 0.875rem;
 }
-footer strong { color: var(--white); }
+
+.footer-inner {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 2.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+@media (min-width: 640px) {
+  .footer-inner {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+}
+
+.footer-logo {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: var(--white);
+  text-decoration: none;
+  letter-spacing: -0.5px;
+}
+.footer-brand p {
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.55);
+}
+
+.footer-heading {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--c-300);
+  margin-bottom: 0.75rem;
+}
+
+.footer-col ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.footer-col a {
+  color: rgba(255,255,255,0.7);
+  text-decoration: none;
+  transition: color 0.18s;
+}
+.footer-col a:hover { color: var(--c-300); }
+
+.footer-bottom {
+  border-top: 1px solid rgba(255,255,255,0.12);
+  text-align: center;
+  padding: 1.25rem 1rem;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.45);
+}
 
 /* ── ENTRANCE ANIMATIONS ─────────────────────────────────────────────────── */
 @keyframes fadeUp {
