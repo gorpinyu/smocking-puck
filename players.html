@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Players — Smocking Puck</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div id="nav-placeholder"></div>
+
+  <main>
+    <div class="page-header">
+      <h1>My Players 🏒</h1>
+      <p>The players you book sessions for.</p>
+    </div>
+
+    <div class="container">
+      <div class="card player-add-card">
+        <p class="admin-section-title">Add a Player</p>
+        <form class="player-form" id="addPlayerForm">
+          <div class="form-group">
+            <label for="playerName">Player Name</label>
+            <input type="text" id="playerName" maxlength="60" required />
+          </div>
+          <button type="submit" class="btn btn-primary">Add Player</button>
+        </form>
+      </div>
+
+      <div class="bookings-list" id="playersList"></div>
+
+      <div class="empty-state" id="emptyState" style="display:none">
+        <div class="ico">👤</div>
+        <p>
+          No players yet.<br>
+          Add your first player above, then
+          <a href="sessions.html" style="color:var(--c-600);font-weight:700">book a session →</a>
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <div id="footer-placeholder"></div>
+
+  <script type="module" src="players.js"></script>
+</body>
+</html>

@@ -52,8 +52,11 @@
               <input type="number" id="newDuration" value="60" min="15" max="240" required />
             </div>
             <div class="form-group">
-              <label for="newCapacity">Max Spots</label>
-              <input type="number" id="newCapacity" value="10" min="1" max="50" required />
+              <label for="newMode">Mode</label>
+              <select id="newMode" required>
+                <option value="1">1-on-1 (1 spot)</option>
+                <option value="2">1-on-2 (2 spots)</option>
+              </select>
             </div>
             <div class="form-group full-width">
               <label for="newTitle">Session Title</label>

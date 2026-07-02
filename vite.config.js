@@ -8,6 +8,7 @@ export default defineConfig({
         index: resolve(__dirname, 'index.html'),
         sessions: resolve(__dirname, 'sessions.html'),
         myBookings: resolve(__dirname, 'my-bookings.html'),
+        players: resolve(__dirname, 'players.html'),
         login: resolve(__dirname, 'login.html'),
         admin: resolve(__dirname, 'admin.html'),
       },

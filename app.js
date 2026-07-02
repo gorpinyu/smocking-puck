@@ -74,6 +74,9 @@ export const formatDate = (dateStr) => {
   });
 };
 
+// Session mode is derived from capacity, not stored: 1 spot = 1-on-1, 2 = 1-on-2.
+export const sessionMode = (maxCapacity) => (maxCapacity >= 2 ? '1-on-2' : '1-on-1');
+
 export const formatTime = (timeStr) => {
   const [h, min] = timeStr.split(':').map(Number);
   const ampm = h >= 12 ? 'PM' : 'AM';
@@ -107,6 +110,7 @@ export async function renderNav() {
         <ul class="nav-links">
           <li><a href="sessions.html"${active('sessions.html')}>Sessions</a></li>
           <li><a href="my-bookings.html"${active('my-bookings.html')}>My Bookings</a></li>
+          <li><a href="players.html"${active('players.html')}>My Players</a></li>
           ${desktopAuth}
         </ul>
         <button class="hamburger" id="hamburgerBtn" aria-label="Open menu">
@@ -116,6 +120,7 @@ export async function renderNav() {
       <div class="mobile-menu" id="mobileMenu">
         <a href="sessions.html">Sessions</a>
         <a href="my-bookings.html">My Bookings</a>
+        <a href="players.html">My Players</a>
         ${mobileAuth}
       </div>
     </nav>`;

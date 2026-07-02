@@ -33,7 +33,11 @@ async function renderBookings() {
 
   list.style.display = 'flex';
   empty.style.display = 'none';
-  list.innerHTML = rows.map(({ booking, session: s }) => `
+  list.innerHTML = rows.map(({ booking, session: s }) => {
+    const players = booking.playerName2
+      ? `${escapeHtml(booking.playerName)} &amp; ${escapeHtml(booking.playerName2)}`
+      : escapeHtml(booking.playerName);
+    return `
     <div class="card booking-card">
       <div class="booking-info">
         <div class="session-date">${formatDate(s.date)}</div>
@@ -41,19 +45,21 @@ async function renderBookings() {
         <div class="session-meta">
           ⏰ ${formatTime(s.time)} &nbsp;·&nbsp; ⏱ ${s.duration} min
         </div>
+        ${booking.playerName ? `<div class="session-meta">👤 ${players}</div>` : ''}
       </div>
-      <button class="btn btn-danger btn-sm" data-action="cancel" data-booking-id="${booking.id}" data-session-id="${s.id}">Cancel</button>
-    </div>`).join('');
+      <button class="btn btn-danger btn-sm" data-action="cancel" data-booking-id="${booking.id}" data-session-id="${s.id}" data-spots="${booking.playerName2 ? 2 : 1}">Cancel</button>
+    </div>`;
+  }).join('');
 
   list.querySelectorAll('[data-action="cancel"]').forEach((btn) => {
-    btn.addEventListener('click', () => cancelBooking(btn.dataset.bookingId, btn.dataset.sessionId));
+    btn.addEventListener('click', () => cancelBooking(btn.dataset.bookingId, btn.dataset.sessionId, parseInt(btn.dataset.spots)));
   });
 }
 
-async function cancelBooking(bookingId, sessionId) {
+async function cancelBooking(bookingId, sessionId, spots) {
   if (!confirm('Cancel this session booking?')) return;
   const { data: s } = await client.models.Session.get({ id: sessionId });
   await client.models.Booking.delete({ id: bookingId });
-  if (s) await client.models.Session.update({ id: sessionId, bookedCount: Math.max(0, s.bookedCount - 1) });
+  if (s) await client.models.Session.update({ id: sessionId, bookedCount: Math.max(0, s.bookedCount - spots) });
   await renderBookings();
 }

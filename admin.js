@@ -1,4 +1,4 @@
-import { client, isAdmin, escapeHtml, formatDate, formatTime, todayISO, isPastDate, renderNav, renderFooter } from './app.js';
+import { client, isAdmin, escapeHtml, formatDate, formatTime, todayISO, isPastDate, sessionMode, renderNav, renderFooter } from './app.js';
 
 // Attached immediately (not gated behind the async admin check below) so a
 // submit before that check resolves is handled by our code, not a native
@@ -36,13 +36,20 @@ async function renderTable() {
   const rowsHtml = await Promise.all(sessions.map(async (s) => {
     const { data: bookings } = await client.models.Booking.list({ filter: { sessionId: { eq: s.id } } });
     const who = bookings.length
-      ? bookings.map((b) => `${escapeHtml(b.userName)} &lt;${escapeHtml(b.userEmail)}&gt;`).join('<br>')
+      ? bookings.map((b) => {
+          // playerName fallback covers bookings created before the Player rollout
+          const players = b.playerName2
+            ? `${escapeHtml(b.playerName)} &amp; ${escapeHtml(b.playerName2)}`
+            : escapeHtml(b.playerName || b.userName);
+          return `${players} &lt;${escapeHtml(b.userEmail)}&gt;`;
+        }).join('<br>')
       : '<span style="color:#bbb">—</span>';
 
     return `<tr>
       <td>${formatDate(s.date)}</td>
       <td>${formatTime(s.time)}</td>
       <td>${escapeHtml(s.title)}</td>
+      <td>${sessionMode(s.maxCapacity)}</td>
       <td style="text-align:center">${s.bookedCount} / ${s.maxCapacity}</td>
       <td class="who">${who}</td>
       <td><button class="btn btn-danger btn-sm" data-action="delete" data-id="${s.id}">Delete</button></td>
@@ -56,6 +63,7 @@ async function renderTable() {
           <th>Date</th>
           <th>Time</th>
           <th>Title</th>
+          <th>Mode</th>
           <th>Booked</th>
           <th>Who</th>
           <th></th>
@@ -77,7 +85,7 @@ async function addSession(e) {
   const date = document.getElementById('newDate').value;
   const time = document.getElementById('newTime').value;
   const duration = parseInt(document.getElementById('newDuration').value);
-  const maxCapacity = parseInt(document.getElementById('newCapacity').value);
+  const maxCapacity = parseInt(document.getElementById('newMode').value);
   const title = document.getElementById('newTitle').value.trim();
 
   if (isPastDate(date)) {
@@ -92,7 +100,6 @@ async function addSession(e) {
   document.getElementById('addSuccess').style.display = 'block';
   document.getElementById('addForm').reset();
   document.getElementById('newDuration').value = 60;
-  document.getElementById('newCapacity').value = 10;
   document.getElementById('newTitle').value = 'Shooting Skills Session';
   document.getElementById('newDate').min = todayISO();
 

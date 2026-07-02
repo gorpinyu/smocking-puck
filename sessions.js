@@ -1,4 +1,4 @@
-import { client, getCurrentUser, escapeHtml, formatDate, formatTime, isPastDate, renderNav, renderFooter } from './app.js';
+import { client, getCurrentUser, escapeHtml, formatDate, formatTime, isPastDate, sessionMode, renderNav, renderFooter } from './app.js';
 
 (async () => {
   await renderNav();
@@ -19,9 +19,14 @@ async function renderSessions() {
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 
   let myBookings = [];
+  let myPlayers = [];
   if (user) {
-    const { data } = await client.models.Booking.list();
-    myBookings = data;
+    const [bookingsRes, playersRes] = await Promise.all([
+      client.models.Booking.list(),
+      client.models.Player.list(),
+    ]);
+    myBookings = bookingsRes.data;
+    myPlayers = playersRes.data.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   const grid = document.getElementById('sessionsGrid');
@@ -35,19 +40,31 @@ async function renderSessions() {
 
   grid.style.display = '';
   empty.style.display = 'none';
-  grid.innerHTML = upcoming.map((s, i) => buildCard(s, user, myBookings, i)).join('');
+  grid.innerHTML = upcoming.map((s, i) => buildCard(s, user, myBookings, myPlayers, i)).join('');
 
   grid.querySelectorAll('[data-action="book"]').forEach((btn) => {
-    btn.addEventListener('click', () => bookSession(btn.dataset.id));
+    btn.addEventListener('click', () => {
+      const form = document.getElementById(`bf-${btn.dataset.id}`);
+      form.style.display = form.style.display === 'none' ? '' : 'none';
+    });
+  });
+  grid.querySelectorAll('[data-action="confirm-book"]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const playerName = document.getElementById(`bp-${id}`).value;
+      const secondInput = document.getElementById(`bp2-${id}`);
+      bookSession(id, playerName, secondInput ? secondInput.value.trim() : '');
+    });
   });
 }
 
-function buildCard(s, user, myBookings, i) {
+function buildCard(s, user, myBookings, myPlayers, i) {
   const spotsLeft = s.maxCapacity - s.bookedCount;
   const isFull = spotsLeft <= 0;
   const isBooked = user && myBookings.some((b) => b.sessionId === s.id);
 
   let action;
+  let bookForm = '';
   if (isBooked) {
     action = `<span class="badge badge-booked">Booked ✓</span>`;
   } else if (isFull) {
@@ -56,12 +73,14 @@ function buildCard(s, user, myBookings, i) {
     action = `<a href="login.html" class="btn btn-primary btn-sm">Book Now</a>`;
   } else {
     action = `<button class="btn btn-primary btn-sm" data-action="book" data-id="${s.id}">Book Now</button>`;
+    bookForm = buildBookForm(s, myPlayers, spotsLeft);
   }
 
   return `
     <div class="card session-card animate-in" style="animation-delay:${i * 0.07}s" id="sc-${s.id}">
       <div class="session-card-top">
         <span class="session-date">${formatDate(s.date)}</span>
+        <span class="mode-badge">${sessionMode(s.maxCapacity)}</span>
       </div>
       <h3>${escapeHtml(s.title)}</h3>
       <div class="session-meta">
@@ -74,25 +93,61 @@ function buildCard(s, user, myBookings, i) {
         </span>
         ${action}
       </div>
+      ${bookForm}
     </div>`;
 }
 
-async function bookSession(id) {
+function buildBookForm(s, myPlayers, spotsLeft) {
+  if (myPlayers.length === 0) {
+    return `
+      <div class="book-form" id="bf-${s.id}" style="display:none">
+        <p class="book-form-note">
+          You need a saved player to book.
+          <a href="players.html">Add a player →</a>
+        </p>
+      </div>`;
+  }
+
+  const secondPlayer = s.maxCapacity >= 2 && spotsLeft >= 2
+    ? `<div class="form-group">
+        <label for="bp2-${s.id}">Second player (optional)</label>
+        <input type="text" id="bp2-${s.id}" maxlength="60" placeholder="Sibling or friend's name" />
+      </div>`
+    : '';
+
+  return `
+    <div class="book-form" id="bf-${s.id}" style="display:none">
+      <div class="form-group">
+        <label for="bp-${s.id}">Player</label>
+        <select id="bp-${s.id}">
+          ${myPlayers.map((p) => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('')}
+        </select>
+      </div>
+      ${secondPlayer}
+      <button class="btn btn-primary btn-sm" data-action="confirm-book" data-id="${s.id}">Confirm Booking</button>
+    </div>`;
+}
+
+async function bookSession(id, playerName, playerName2) {
   const user = await getCurrentUser();
   if (!user) { window.location.href = 'login.html'; return; }
+  if (!playerName) return;
 
   const { data: s } = await client.models.Session.get({ id });
   if (!s) return;
 
+  const spots = playerName2 ? 2 : 1;
   const { data: existing } = await client.models.Booking.list();
-  if (existing.some((b) => b.sessionId === id) || s.bookedCount >= s.maxCapacity) return;
+  if (existing.some((b) => b.sessionId === id) || s.bookedCount + spots > s.maxCapacity) return;
 
   await client.models.Booking.create({
     sessionId: id,
     sessionDate: s.date,
     userName: user.name,
     userEmail: user.email,
+    playerName,
+    ...(playerName2 ? { playerName2 } : {}),
   });
-  await client.models.Session.update({ id, bookedCount: s.bookedCount + 1 });
+  await client.models.Session.update({ id, bookedCount: s.bookedCount + spots });
   await renderSessions();
 }

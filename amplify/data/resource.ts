@@ -37,11 +37,21 @@ const schema = a.schema({
       sessionDate: a.string().required(), // denormalized for filtering past bookings
       userName: a.string().required(), // denormalized at booking time for the admin "Who" list
       userEmail: a.string().required(),
+      playerName: a.string().required(),
+      // Optional second player on a 1-on-2 booking - when set, the booking
+      // consumes 2 spots (the single source of truth for bookedCount math).
+      playerName2: a.string(),
     })
     .authorization((allow) => [
       allow.owner(),
       allow.group('Admins').to(['read', 'delete']),
     ]),
+
+  Player: a
+    .model({
+      name: a.string().required(),
+    })
+    .authorization((allow) => [allow.owner()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;

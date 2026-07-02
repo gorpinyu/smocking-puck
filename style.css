@@ -485,6 +485,47 @@ main { flex: 1; }
   color: #880e4f;
 }
 
+.mode-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--c-700);
+  background: var(--c-100);
+  padding: 0.25rem 0.65rem;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* ── BOOKING FORM (inline in session card) ───────────────────────────────── */
+.book-form {
+  border-top: 1px solid rgba(2,136,209,0.08);
+  padding-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.book-form .form-group { margin-bottom: 0; }
+.book-form .btn { align-self: flex-end; }
+
+.book-form-note { font-size: 0.85rem; color: var(--muted); }
+.book-form-note a { color: var(--c-600); font-weight: 700; }
+
+/* ── MY PLAYERS ──────────────────────────────────────────────────────────── */
+.player-add-card { padding: 1.5rem; margin-bottom: 1.5rem; }
+
+.player-form {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.player-form .form-group {
+  flex: 1;
+  min-width: 200px;
+  margin-bottom: 0;
+}
+
 /* ── NEXT UP (HOME) ──────────────────────────────────────────────────────── */
 .next-up-section {
   padding: 4.5rem 1.5rem;
@@ -525,7 +566,10 @@ main { flex: 1; }
 }
 
 .steps-section h2,
-.next-up-section h2 {
+.next-up-section h2,
+.gallery-section h2,
+.coaches-section h2,
+.testimonials-section h2 {
   font-size: clamp(1.6rem, 4vw, 2.25rem);
   font-weight: 900;
   color: var(--c-900);
@@ -655,7 +699,8 @@ main { flex: 1; }
   margin-bottom: 0.4rem;
   letter-spacing: 0.2px;
 }
-.form-group input {
+.form-group input,
+.form-group select {
   width: 100%;
   padding: 0.68rem 1rem;
   border: 1.5px solid #E2E8F0;
@@ -666,7 +711,8 @@ main { flex: 1; }
   background: #FAFCFF;
   transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
 }
-.form-group input:focus {
+.form-group input:focus,
+.form-group select:focus {
   border-color: var(--c-400);
   background: var(--white);
   box-shadow: 0 0 0 4px rgba(3,169,244,0.12);
@@ -905,3 +951,167 @@ footer {
 .animate-in:nth-child(4) { animation-delay: 0.29s; }
 .animate-in:nth-child(5) { animation-delay: 0.37s; }
 .animate-in:nth-child(6) { animation-delay: 0.45s; }
+
+/* ── GALLERY (HOME) ──────────────────────────────────────────────────────── */
+.gallery-section {
+  background: var(--white);
+  padding: 5rem 1.5rem;
+  text-align: center;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+@media (min-width: 900px) { .gallery-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.gallery-tile {
+  aspect-ratio: 3 / 2;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(2,136,209,0.1);
+}
+
+.gallery-tile-wide { grid-column: span 2; }
+
+.gallery-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s cubic-bezier(.22,.61,.36,1);
+}
+.gallery-tile:hover img { transform: scale(1.06); }
+
+.gallery-credits {
+  margin-top: 1.5rem;
+  font-size: 0.76rem;
+  color: var(--muted);
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.7;
+}
+.gallery-credits a { color: var(--c-600); }
+
+/* ── COACHES (HOME) ──────────────────────────────────────────────────────── */
+.coaches-section {
+  padding: 5rem 1.5rem;
+  text-align: center;
+}
+
+.coaches-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  max-width: 860px;
+  margin: 0 auto;
+}
+@media (min-width: 640px) { .coaches-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.coach-card { padding: 2rem 1.5rem; }
+
+.coach-avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--c-400), var(--c-700));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  margin: 0 auto 1.1rem;
+  box-shadow: 0 4px 16px rgba(2,136,209,0.35), 0 2px 0 rgba(0,0,0,0.1) inset;
+}
+
+.coach-card h3 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--c-900);
+  margin-bottom: 0.35rem;
+}
+
+.coach-cred {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--c-600);
+  margin-bottom: 0.75rem;
+}
+
+.coach-card p {
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ── TESTIMONIALS (HOME) ─────────────────────────────────────────────────── */
+.testimonials-section {
+  background: linear-gradient(180deg, #F0F8FF 0%, #E1F5FE 100%);
+  padding: 5rem 1.5rem;
+  text-align: center;
+}
+
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  max-width: 860px;
+  margin: 0 auto;
+  text-align: left;
+}
+@media (min-width: 640px) { .testimonials-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.testimonial-card {
+  padding: 1.6rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.testimonial-card blockquote {
+  font-size: 0.92rem;
+  color: var(--body);
+  line-height: 1.65;
+}
+
+.testimonial-card figcaption {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.testimonial-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--c-400), var(--c-700));
+  color: var(--white);
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(2,136,209,0.3);
+}
+
+.testimonial-name {
+  display: block;
+  font-weight: 800;
+  font-size: 0.88rem;
+  color: var(--c-900);
+}
+
+.testimonial-role {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
