@@ -100,7 +100,7 @@ export async function renderNav() {
        <button data-action="logout">Logout</button>`
     : `<a href="login.html">Login / Register</a>`;
 
-  placeholder.outerHTML = `
+  placeholder.innerHTML = `
     <nav>
       <div class="nav-inner">
         <a href="index.html" class="nav-logo">🏒 Smocking Puck</a>
