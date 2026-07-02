@@ -18,12 +18,15 @@ let cachedUser; // memoized per page load — avoids re-fetching attributes on e
 // signInWithRedirect (Google) completes asynchronously after the browser
 // lands back on the app - the page's own render logic (nav AND main
 // content) may already have run against the pre-redirect (guest) session.
-// A one-time reload re-runs everything against the now-established session;
-// it won't loop because the OAuth code/state are stripped from the URL
-// once Amplify finishes processing them, so this event fires only once.
+// A one-time reload re-runs everything against the now-established session.
+// Reload to the bare path (no query string) rather than location.reload() -
+// the ?code=&state= from the OAuth redirect may still be in the URL at this
+// point, and reloading with it still attached makes Amplify try to exchange
+// that single-use code a second time, which fails and leaves the page stuck
+// looking logged-out (silently, since getCurrentUser()'s catch swallows it).
 Hub.listen('auth', ({ payload }) => {
   if (payload.event === 'signInWithRedirect') {
-    window.location.reload();
+    window.location.replace(window.location.pathname);
   }
 });
 
