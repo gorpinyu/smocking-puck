@@ -116,3 +116,4 @@ Schema defined in `amplify/data/resource.ts`.
 - All rendered user-supplied strings (names, emails, session titles) are passed through `escapeHtml()` in `app.js` before being inserted via `innerHTML` — prevents stored XSS.
 - Dates are compared as plain `'YYYY-MM-DD'` strings (`todayISO()` / `isPastDate()` in `app.js`) rather than constructing `Date` objects, avoiding timezone-related off-by-one-day bugs.
 - CSS uses flexbox / CSS grid for layout; no external dependencies beyond `aws-amplify`.
+- `app.js` holds a real (unused-looking but load-bearing) reference to `signInWithRedirect` from `aws-amplify/auth`. Vite's per-page code-splitting will tree-shake Amplify's OAuth-redirect-completion code out of any page bundle that doesn't reference it — `sessions.html` (the actual Google OAuth callback page) previously had no such reference since only `login.js` imported it, which made Google sign-in hang forever with no error. Don't remove this reference as "dead code."
