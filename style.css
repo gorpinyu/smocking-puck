@@ -337,6 +337,16 @@ main { flex: 1; }
   transform: translateY(-2px);
 }
 
+.btn-google {
+  background: var(--white);
+  color: var(--body);
+  border: 1.5px solid #DADCE0;
+}
+.btn-google:hover {
+  background: #F8F9FA;
+  transform: translateY(-2px);
+}
+
 .btn-outline {
   background: transparent;
   color: var(--c-600);
