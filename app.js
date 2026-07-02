@@ -16,12 +16,14 @@ export const client = generateClient();
 let cachedUser; // memoized per page load — avoids re-fetching attributes on every call
 
 // signInWithRedirect (Google) completes asynchronously after the browser
-// lands back on the app - without this, the nav can render before the
-// session is established and get stuck showing "Login" instead of "Logout".
+// lands back on the app - the page's own render logic (nav AND main
+// content) may already have run against the pre-redirect (guest) session.
+// A one-time reload re-runs everything against the now-established session;
+// it won't loop because the OAuth code/state are stripped from the URL
+// once Amplify finishes processing them, so this event fires only once.
 Hub.listen('auth', ({ payload }) => {
   if (payload.event === 'signInWithRedirect') {
-    cachedUser = undefined;
-    renderNav();
+    window.location.reload();
   }
 });
 
