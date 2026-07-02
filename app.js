@@ -15,6 +15,21 @@ export const client = generateClient();
 
 let cachedUser; // memoized per page load — avoids re-fetching attributes on every call
 
+// Google's OAuth redirect always lands back on this same app with ?code=&
+// state= in the URL, and Amplify's internal oauth-listener starts exchanging
+// that code as soon as the page loads. Calling any Auth function (like
+// getCurrentUser() below, which every page does immediately via renderNav())
+// while that exchange is still in flight can deadlock in Amplify JS v6 - the
+// page just hangs forever with no error. So when a redirect code is present,
+// every getCurrentUser() call waits for Amplify's own Hub event confirming
+// the exchange is done (success or failure) before touching Auth at all.
+// The timeout is a safety net in case that assumption is ever wrong.
+const hasPendingOAuthRedirect = new URLSearchParams(window.location.search).has('code');
+let resolveOAuthSettled;
+const oauthSettled = new Promise((resolve) => { resolveOAuthSettled = resolve; });
+if (!hasPendingOAuthRedirect) resolveOAuthSettled();
+else setTimeout(resolveOAuthSettled, 8000);
+
 // signInWithRedirect (Google) completes asynchronously after the browser
 // lands back on the app - the page's own render logic (nav AND main
 // content) may already have run against the pre-redirect (guest) session.
@@ -26,16 +41,19 @@ let cachedUser; // memoized per page load — avoids re-fetching attributes on e
 // looking logged-out (silently, since getCurrentUser()'s catch swallows it).
 Hub.listen('auth', ({ payload }) => {
   if (payload.event === 'signInWithRedirect') {
+    resolveOAuthSettled();
     window.location.replace(window.location.pathname);
   } else if (payload.event === 'signInWithRedirect_failure') {
     // Logged (not just swallowed) so a failed OAuth code exchange is
     // diagnosable instead of silently leaving the page looking logged-out.
     console.error('Google sign-in redirect failed:', payload.data);
+    resolveOAuthSettled();
   }
 });
 
 export async function getCurrentUser() {
   if (cachedUser !== undefined) return cachedUser;
+  await oauthSettled;
   try {
     await amplifyGetCurrentUser();
     const attrs = await fetchUserAttributes();
