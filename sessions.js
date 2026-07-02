@@ -1,12 +1,6 @@
-import { client, getCurrentUser, escapeHtml, formatDate, formatTime, isPastDate, sessionMode, isLoggedIn, renderNav, renderFooter } from './app.js';
+import { client, getCurrentUser, escapeHtml, formatDate, formatTime, isPastDate, sessionMode, renderNav, renderFooter } from './app.js';
 
-// Guest browsing temporarily disabled as a diagnostic test for the Google
-// sign-in hang - see rollback branch "pre-disable-guest-browsing".
 (async () => {
-  if (!(await isLoggedIn())) {
-    window.location.href = 'login.html';
-    return;
-  }
   await renderNav();
   await renderFooter();
   await renderSessions();
@@ -14,7 +8,11 @@ import { client, getCurrentUser, escapeHtml, formatDate, formatTime, isPastDate,
 
 async function renderSessions() {
   const user = await getCurrentUser();
-  const { data: sessions } = await client.models.Session.list();
+  // Browsing is public - guests must use the IAM/guest auth mode since the
+  // client's default (userPool) only satisfies the "authenticated" rule.
+  const { data: sessions } = await client.models.Session.list(
+    user ? {} : { authMode: 'identityPool' },
+  );
 
   const upcoming = sessions
     .filter((s) => !isPastDate(s.date))

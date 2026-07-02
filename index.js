@@ -6,23 +6,19 @@ renderNextUp();
 
 async function renderNextUp() {
   const user = await getCurrentUser();
-  const grid = document.getElementById('nextUpGrid');
-  const empty = document.getElementById('nextUpEmpty');
-
-  // Guest browsing temporarily disabled as a diagnostic test for the Google
-  // sign-in hang - see rollback branch "pre-disable-guest-browsing".
-  if (!user) {
-    grid.style.display = 'none';
-    empty.style.display = 'block';
-    return;
-  }
-
-  const { data: sessions } = await client.models.Session.list();
+  // Browsing is public - guests must use the IAM/guest auth mode since the
+  // client's default (userPool) only satisfies the "authenticated" rule.
+  const { data: sessions } = await client.models.Session.list(
+    user ? {} : { authMode: 'identityPool' },
+  );
 
   const upcoming = sessions
     .filter((s) => !isPastDate(s.date))
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
     .slice(0, 3);
+
+  const grid = document.getElementById('nextUpGrid');
+  const empty = document.getElementById('nextUpEmpty');
 
   if (upcoming.length === 0) {
     grid.style.display = 'none';

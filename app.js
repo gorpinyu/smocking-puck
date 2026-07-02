@@ -11,7 +11,6 @@ import { Hub } from 'aws-amplify/utils';
 import outputs from './amplify_outputs.json';
 
 Amplify.configure(outputs);
-console.log('app.js: Amplify configured, module loaded');
 
 // Real (not discardable) reference to signInWithRedirect, not a call - per-
 // page code-splitting can otherwise tree-shake the OAuth-redirect-completion
@@ -35,7 +34,6 @@ let cachedUser; // memoized per page load — avoids re-fetching attributes on e
 // that single-use code a second time, which fails and leaves the page stuck
 // looking logged-out (silently, since getCurrentUser()'s catch swallows it).
 Hub.listen('auth', ({ payload }) => {
-  console.log('Hub auth event:', payload.event);
   if (payload.event === 'signInWithRedirect') {
     window.location.replace(window.location.pathname);
   } else if (payload.event === 'signInWithRedirect_failure') {
@@ -45,11 +43,10 @@ Hub.listen('auth', ({ payload }) => {
   }
 });
 
-// amplifyGetCurrentUser() has been observed to hang forever (never resolve
-// OR reject) specifically right after the Google OAuth redirect lands - a
-// stall inside Amplify's own Cognito handling, confirmed by its own Hub
-// 'signInWithRedirect' event also never firing in that state. Without a
-// timeout, that hang freezes the whole page (nav included) indefinitely.
+// Safety net, not expected to trigger in normal operation: a prior bundling
+// bug (see the signInWithRedirect comment above) once made this call hang
+// forever with no resolve/reject. Kept as insurance against a similar future
+// regression so the page degrades to logged-out instead of freezing.
 function withTimeout(promise, ms) {
   return Promise.race([
     promise,
@@ -59,23 +56,16 @@ function withTimeout(promise, ms) {
 
 export async function getCurrentUser() {
   if (cachedUser !== undefined) return cachedUser;
-  console.log('getCurrentUser: start');
   try {
-    console.log('getCurrentUser: calling amplifyGetCurrentUser()');
-    // Temporarily bumped way up (diagnostic only) to find out whether the
-    // exchange ever completes if given more time, since the previous 6s
-    // timeout was causing sessions.js's login-gate to redirect away from
-    // the code-bearing URL before Amplify's process could finish.
-    await withTimeout(amplifyGetCurrentUser(), 45000);
-    console.log('getCurrentUser: amplifyGetCurrentUser() resolved, calling fetchUserAttributes()');
-    const attrs = await withTimeout(fetchUserAttributes(), 45000);
-    console.log('getCurrentUser: fetchUserAttributes() resolved', attrs);
+    await withTimeout(amplifyGetCurrentUser(), 10000);
+    const attrs = await withTimeout(fetchUserAttributes(), 10000);
     cachedUser = { id: attrs.sub, name: attrs.name || attrs.email, email: attrs.email };
   } catch (err) {
-    // Logged at debug level: "no current user" is the expected/common case
-    // for guests, but keeping the real error visible (instead of a bare
-    // catch) is what actually let us diagnose the redirect failure below.
-    console.log('getCurrentUser: no authenticated user', err);
+    // A timeout here would mean the safety net above actually triggered -
+    // worth surfacing. A plain "not signed in" (the common guest case) isn't.
+    if (err instanceof Error && err.message.startsWith('timed out')) {
+      console.error('getCurrentUser: Amplify auth call timed out', err);
+    }
     cachedUser = null;
   }
   return cachedUser;
@@ -129,12 +119,10 @@ export const formatTime = (timeStr) => {
 };
 
 export async function renderNav() {
-  console.log('renderNav: start');
   const placeholder = document.getElementById('nav-placeholder');
   if (!placeholder) return;
 
   const user = await getCurrentUser();
-  console.log('renderNav: getCurrentUser() resolved', user);
   const page = window.location.pathname.split('/').pop() || 'index.html';
   const active = (p) => (page === p ? ' class="active"' : '');
   const firstName = user ? escapeHtml(user.name.split(' ')[0]) : '';

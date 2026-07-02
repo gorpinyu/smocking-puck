@@ -18,16 +18,15 @@ const schema = a.schema({
         .authorization((allow) => [
           // Field-level rules fully replace (not merge with) the model-level
           // rules for this field, so Admins must be re-granted explicitly here.
-          // Guest read temporarily removed - see sessions.js/index.js comments.
+          allow.guest().to(['read']),
           allow.authenticated().to(['read', 'update']),
           allow.group('Admins'),
         ]),
     })
     .authorization((allow) => [
-      // Guest read temporarily removed as a diagnostic test for the Google
-      // sign-in hang (this app's combined userPool+identityPool auth mode
-      // setup is suspected as the trigger) - see rollback branch
-      // "pre-disable-guest-browsing" to restore public session browsing.
+      // Session browsing is public - only booking requires login, per the
+      // "not logged in -> redirect to login.html" flow in sessions.js.
+      allow.guest().to(['read']),
       allow.authenticated().to(['read']),
       allow.group('Admins'),
     ]),
