@@ -36,14 +36,26 @@ Hub.listen('auth', ({ payload }) => {
   }
 });
 
+// amplifyGetCurrentUser() has been observed to hang forever (never resolve
+// OR reject) specifically right after the Google OAuth redirect lands - a
+// stall inside Amplify's own Cognito handling, confirmed by its own Hub
+// 'signInWithRedirect' event also never firing in that state. Without a
+// timeout, that hang freezes the whole page (nav included) indefinitely.
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms)),
+  ]);
+}
+
 export async function getCurrentUser() {
   if (cachedUser !== undefined) return cachedUser;
   console.log('getCurrentUser: start');
   try {
     console.log('getCurrentUser: calling amplifyGetCurrentUser()');
-    await amplifyGetCurrentUser();
+    await withTimeout(amplifyGetCurrentUser(), 6000);
     console.log('getCurrentUser: amplifyGetCurrentUser() resolved, calling fetchUserAttributes()');
-    const attrs = await fetchUserAttributes();
+    const attrs = await withTimeout(fetchUserAttributes(), 6000);
     console.log('getCurrentUser: fetchUserAttributes() resolved', attrs);
     cachedUser = { id: attrs.sub, name: attrs.name || attrs.email, email: attrs.email };
   } catch (err) {
