@@ -7,7 +7,11 @@ import { client, getCurrentUser, escapeHtml, formatDate, formatTime, isPastDate,
 
 async function renderSessions() {
   const user = await getCurrentUser();
-  const { data: sessions } = await client.models.Session.list();
+  // Browsing is public - guests must use the IAM/guest auth mode since the
+  // client's default (userPool) only satisfies the "authenticated" rule.
+  const { data: sessions } = await client.models.Session.list(
+    user ? {} : { authMode: 'identityPool' },
+  );
 
   const upcoming = sessions
     .filter((s) => !isPastDate(s.date))

@@ -18,11 +18,15 @@ const schema = a.schema({
         .authorization((allow) => [
           // Field-level rules fully replace (not merge with) the model-level
           // rules for this field, so Admins must be re-granted explicitly here.
+          allow.guest().to(['read']),
           allow.authenticated().to(['read', 'update']),
           allow.group('Admins'),
         ]),
     })
     .authorization((allow) => [
+      // Session browsing is public - only booking requires login, per the
+      // "not logged in -> redirect to login.html" flow in sessions.js.
+      allow.guest().to(['read']),
       allow.authenticated().to(['read']),
       allow.group('Admins'),
     ]),
