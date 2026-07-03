@@ -46,7 +46,9 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.owner(),
-      allow.group('Admins').to(['read', 'delete']),
+      // 'create' lets the admin dashboard book an open session on behalf of
+      // a guardian who can't/didn't book it themselves.
+      allow.group('Admins').to(['read', 'create', 'delete']),
     ]),
 
   Player: a

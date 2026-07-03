@@ -144,7 +144,10 @@ export async function renderNav() {
   placeholder.innerHTML = `
     <nav>
       <div class="nav-inner">
-        <a href="index.html" class="nav-logo"><img src="/logo.png" alt="Smocking Puck" class="nav-logo-img" /></a>
+        <a href="index.html" class="nav-logo">
+          <img src="/logo.png" alt="" class="nav-logo-img" />
+          <span class="nav-logo-text">Smocking <span class="accent-text">Puck</span></span>
+        </a>
         <ul class="nav-links">
           <li><a href="sessions.html"${active('sessions.html')}>Sessions</a></li>
           <li><a href="my-bookings.html"${active('my-bookings.html')}>My Bookings</a></li>
@@ -182,7 +185,10 @@ export async function renderFooter() {
     <footer>
       <div class="footer-inner">
         <div class="footer-col footer-brand">
-          <a href="index.html" class="footer-logo"><img src="/logo.png" alt="Smocking Puck" class="footer-logo-img" /></a>
+          <a href="index.html" class="footer-logo">
+            <img src="/logo.png" alt="" class="footer-logo-img" />
+            <span class="footer-logo-text">Smocking <span class="accent-text">Puck</span></span>
+          </a>
           <p>Hockey Skills Sessions</p>
         </div>
         <div class="footer-col">

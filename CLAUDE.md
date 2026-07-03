@@ -55,7 +55,8 @@ Schema defined in `amplify/data/resource.ts`.
 ```
 { id, sessionId, sessionDate, userName, userEmail, mode('ONE_ON_ONE'|'ONE_ON_TWO'), playerName, playerName2? }
 ```
-- Owner-based auth: each user can only create/read/delete their **own** bookings. `Admins` group can additionally read/delete any booking (needed for the admin "Who" list and cascading deletes when a session is removed).
+- Owner-based auth: each user can only create/read/delete their **own** bookings. `Admins` group can additionally read/create/delete any booking (read+delete for the admin "Who" list and cascading deletes when a session is removed; create for the admin "Book for User" flow below).
+- **Known trade-off:** a booking the admin creates via "Book for User" is owned by the admin's own Cognito identity, not the guardian's — there's no client-reachable directory API to look up another user's real `sub`. It shows up correctly in the admin "Who" list, but not on that guardian's own My Bookings page. Fine for "coach takes a booking over the phone"; a real fix needs an admin-only user-lookup Lambda.
 - `userName`/`userEmail` (the booking guardian) and `mode`/`playerName`/`playerName2` (the booked format and who's on the ice) are denormalized onto the booking at creation time so the admin dashboard doesn't need a separate user-lookup function.
 - `mode` is the booker's explicit choice in the booking form (`bookingModeLabel()` in `app.js` renders it) — `playerName2` stays optional even for a `ONE_ON_TWO` booking (a booker might reserve the 1-on-2 format but only bring one player).
 
@@ -96,9 +97,13 @@ Schema defined in `amplify/data/resource.ts`.
 - Players are picked in the booking form on `sessions.html`; removing a player doesn't touch existing bookings (names are denormalized).
 
 ### `admin.html` — Admin Dashboard (Cognito `Admins` group gated)
-- Add Session form (date/time/duration/title only — no mode/capacity field, since format is the booker's choice), All Sessions table (date/time/title/Status "Open"/"Booked"/Who/Delete).
+- Add Session form (date/time/duration/title only — no mode/capacity field, since format is the booker's choice), All Sessions table (date/time/title/Status "Open"/"Booked"/Who/Actions).
 - The Who column lists the booked format + player name(s) per booking with the guardian email.
-- Deleting a session also deletes its `Booking` records (no orphaned bookings).
+- Per-row actions, each an inline expando row (not a modal) toggled open below that session's row:
+  - **Edit** — always available; updates date/time/duration/title on the `Session`, even if it's booked (re-scheduling a booked slot doesn't touch its `Booking`).
+  - **Cancel Booking** (shown when booked) — deletes the session's `Booking` record(s) and flips `booked` back to `false`, freeing the slot without deleting the `Session` itself.
+  - **Book for User** (shown when open) — lets the admin create a `Booking` directly (guardian name/email + format + player name(s), typed in manually — there's no user directory to pick from). See the Booking trade-off note above.
+  - **Delete** — unchanged: removes the `Session` and cascades to its `Booking` records.
 
 ---
 
