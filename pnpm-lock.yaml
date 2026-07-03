@@ -20,6 +20,9 @@ importers:
       aws-amplify:
         specifier: ^6.18.0
         version: 6.18.0
+      vite:
+        specifier: ^8.1.2
+        version: 8.1.2(@types/node@26.1.0)(esbuild@0.28.1)(tsx@4.19.4)
     devDependencies:
       '@aws-amplify/backend':
         specifier: ^1.23.0
@@ -42,9 +45,6 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
-      vite:
-        specifier: ^8.1.2
-        version: 8.1.2(@types/node@26.1.0)(esbuild@0.28.1)(tsx@4.19.4)
 
 packages:
 
