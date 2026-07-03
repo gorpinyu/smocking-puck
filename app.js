@@ -145,7 +145,7 @@ export async function renderNav() {
     <nav>
       <div class="nav-inner">
         <a href="index.html" class="nav-logo">
-          <img src="/logo.png" alt="" class="nav-logo-img" />
+          <span class="nav-logo-mark"><img src="/logo.png" alt="" class="nav-logo-img" /></span>
           <span class="nav-logo-text">Smocking <span class="accent-text">Puck</span></span>
         </a>
         <ul class="nav-links">
@@ -186,7 +186,7 @@ export async function renderFooter() {
       <div class="footer-inner">
         <div class="footer-col footer-brand">
           <a href="index.html" class="footer-logo">
-            <img src="/logo.png" alt="" class="footer-logo-img" />
+            <span class="footer-logo-mark"><img src="/logo.png" alt="" class="footer-logo-img" /></span>
             <span class="footer-logo-text">Smocking <span class="accent-text">Puck</span></span>
           </a>
           <p>Hockey Skills Sessions</p>
