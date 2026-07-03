@@ -23,8 +23,16 @@ document.getElementById('addForm').addEventListener('submit', addSession);
   await renderTable();
 })();
 
-async function renderTable() {
+async function renderTable(justCreated) {
   const { data: sessions } = await client.models.Session.list();
+  // DynamoDB's list Scan is not strongly consistent, so re-querying right
+  // after a create can occasionally still miss the row that was just
+  // written - this was the actual cause of "success" being shown with the
+  // new session never appearing in the table below it. Splice it in from
+  // what create() already returned rather than trusting the re-fetch alone.
+  if (justCreated && !sessions.some((s) => s.id === justCreated.id)) {
+    sessions.push(justCreated);
+  }
   sessions.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
   const wrap = document.getElementById('sessionsTableWrap');
 
@@ -96,7 +104,7 @@ async function addSession(e) {
   // on GraphQL/authorization failures - without this check a failed create
   // still fell through to the "success" banner below despite nothing being
   // written, which is exactly the bug this comment is guarding against.
-  const { errors } = await client.models.Session.create({ title, date, time, duration, booked: false });
+  const { data: created, errors } = await client.models.Session.create({ title, date, time, duration, booked: false });
   if (errors?.length) {
     const el = document.getElementById('addError');
     el.textContent = errors[0].message || 'Failed to add session.';
@@ -110,7 +118,16 @@ async function addSession(e) {
   document.getElementById('newTitle').value = 'Shooting Skills Session';
   document.getElementById('newDate').min = todayISO();
 
-  await renderTable();
+  try {
+    await renderTable(created);
+  } catch (err) {
+    // A render-step failure here would otherwise fail silently (console
+    // only) right after the success banner, looking exactly like the
+    // session vanished - surface it instead of hiding it.
+    const el = document.getElementById('addError');
+    el.textContent = `Session was saved, but the table failed to refresh: ${err.message || err}`;
+    el.style.display = 'block';
+  }
 }
 
 async function deleteSession(id) {
