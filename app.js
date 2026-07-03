@@ -123,9 +123,13 @@ export async function renderNav() {
   if (!placeholder) return;
 
   const user = await getCurrentUser();
+  const admin = user ? await isAdmin() : false;
   const page = window.location.pathname.split('/').pop() || 'index.html';
   const active = (p) => (page === p ? ' class="active"' : '');
   const firstName = user ? escapeHtml(user.name.split(' ')[0]) : '';
+
+  const adminLink = admin ? `<li><a href="admin.html"${active('admin.html')}>Admin</a></li>` : '';
+  const mobileAdminLink = admin ? `<a href="admin.html">Admin</a>` : '';
 
   const desktopAuth = user
     ? `<li><span style="color:rgba(255,255,255,.8);font-weight:600;font-size:.88rem">Hi, ${firstName}!</span></li>
@@ -140,11 +144,12 @@ export async function renderNav() {
   placeholder.innerHTML = `
     <nav>
       <div class="nav-inner">
-        <a href="index.html" class="nav-logo">🏒 Smocking Puck</a>
+        <a href="index.html" class="nav-logo"><img src="/logo.png" alt="Smocking Puck" class="nav-logo-img" /></a>
         <ul class="nav-links">
           <li><a href="sessions.html"${active('sessions.html')}>Sessions</a></li>
           <li><a href="my-bookings.html"${active('my-bookings.html')}>My Bookings</a></li>
           <li><a href="players.html"${active('players.html')}>My Players</a></li>
+          ${adminLink}
           ${desktopAuth}
         </ul>
         <button class="hamburger" id="hamburgerBtn" aria-label="Open menu">
@@ -155,6 +160,7 @@ export async function renderNav() {
         <a href="sessions.html">Sessions</a>
         <a href="my-bookings.html">My Bookings</a>
         <a href="players.html">My Players</a>
+        ${mobileAdminLink}
         ${mobileAuth}
       </div>
     </nav>`;
@@ -175,7 +181,7 @@ export async function renderFooter() {
     <footer>
       <div class="footer-inner">
         <div class="footer-col footer-brand">
-          <a href="index.html" class="footer-logo">🏒 Smocking Puck</a>
+          <a href="index.html" class="footer-logo"><img src="/logo.png" alt="Smocking Puck" class="footer-logo-img" /></a>
           <p>Hockey Skills Sessions</p>
         </div>
         <div class="footer-col">
