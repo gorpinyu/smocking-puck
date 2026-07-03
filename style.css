@@ -65,26 +65,11 @@ nav {
   text-decoration: none;
 }
 
-/* logo.png ships as a large canvas with a lot of built-in padding around
-   the mark (we don't crop the source file itself - see CLAUDE.md) - this
-   window zooms in via a scaled-up, absolutely-positioned img clipped by an
-   overflow:hidden box, so the mark fills the header instead of floating in
-   a sea of blue. */
-.nav-logo-mark {
-  width: 108px;
-  height: 56px;
-  border-radius: 8px;
-  overflow: hidden;
-  position: relative;
-  display: block;
-  flex-shrink: 0;
-}
 .nav-logo-img {
-  position: absolute;
-  width: 353px;
-  max-width: none;
-  left: -163px;
-  top: -55px;
+  height: 56px;
+  width: auto;
+  display: block;
+  border-radius: 8px;
 }
 
 .nav-logo-text {
@@ -945,21 +930,11 @@ footer {
   text-decoration: none;
 }
 
-.footer-logo-mark {
-  width: 92px;
-  height: 48px;
-  border-radius: 8px;
-  overflow: hidden;
-  position: relative;
-  display: block;
-  flex-shrink: 0;
-}
 .footer-logo-img {
-  position: absolute;
-  width: 302px;
-  max-width: none;
-  left: -140px;
-  top: -47px;
+  height: 44px;
+  width: auto;
+  display: block;
+  border-radius: 8px;
 }
 
 .footer-logo-text {
