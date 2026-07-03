@@ -10,9 +10,18 @@ async function renderSessions() {
   const user = await getCurrentUser();
   // Browsing is public - guests must use the IAM/guest auth mode since the
   // client's default (userPool) only satisfies the "authenticated" rule.
-  const { data: rawSessions } = await client.models.Session.list(
+  const { data: rawSessions, errors } = await client.models.Session.list(
     user ? {} : { authMode: 'identityPool' },
   );
+  // list() resolves with { data, errors } instead of throwing on a GraphQL/
+  // authorization failure - left unchecked, that silently renders as "no
+  // upcoming sessions" instead of the load failure it actually is.
+  if (errors?.length) {
+    const el = document.getElementById('loadError');
+    el.textContent = `Couldn't load sessions: ${errors[0].message || 'unknown error'}`;
+    el.style.display = 'block';
+    return;
+  }
   // AppSync nulls out individual list items (rather than failing the whole
   // query) when a stored record can't satisfy a non-null field on read -
   // e.g. legacy Session rows written before `booked` was added to the
