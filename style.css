@@ -66,9 +66,7 @@ nav {
 .nav-logo-img {
   height: 40px;
   display: block;
-  background: var(--white);
   border-radius: 8px;
-  padding: 3px 8px;
 }
 
 .nav-links {
@@ -879,9 +877,7 @@ footer {
 .footer-logo-img {
   height: 34px;
   display: block;
-  background: var(--white);
   border-radius: 8px;
-  padding: 3px 8px;
 }
 .footer-brand p {
   margin-top: 0.4rem;

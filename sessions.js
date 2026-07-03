@@ -10,9 +10,14 @@ async function renderSessions() {
   const user = await getCurrentUser();
   // Browsing is public - guests must use the IAM/guest auth mode since the
   // client's default (userPool) only satisfies the "authenticated" rule.
-  const { data: sessions } = await client.models.Session.list(
+  const { data: rawSessions } = await client.models.Session.list(
     user ? {} : { authMode: 'identityPool' },
   );
+  // AppSync nulls out individual list items (rather than failing the whole
+  // query) when a stored record can't satisfy a non-null field on read -
+  // e.g. legacy Session rows written before `booked` was added to the
+  // schema. Drop those instead of letting a single bad row crash the page.
+  const sessions = rawSessions.filter(Boolean);
 
   const upcoming = sessions
     .filter((s) => !isPastDate(s.date))

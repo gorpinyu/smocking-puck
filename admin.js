@@ -24,7 +24,12 @@ document.getElementById('addForm').addEventListener('submit', addSession);
 })();
 
 async function renderTable(justCreated) {
-  const { data: sessions } = await client.models.Session.list();
+  const { data: rawSessions } = await client.models.Session.list();
+  // AppSync nulls out individual list items (rather than failing the whole
+  // query) when a stored record can't satisfy a non-null field on read -
+  // e.g. legacy Session rows written before `booked` was added to the
+  // schema. Drop those instead of letting a single bad row crash the table.
+  const sessions = rawSessions.filter(Boolean);
   // DynamoDB's list Scan is not strongly consistent, so re-querying right
   // after a create can occasionally still miss the row that was just
   // written - this was the actual cause of "success" being shown with the
