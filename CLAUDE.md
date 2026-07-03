@@ -67,6 +67,13 @@ Schema defined in `amplify/data/resource.ts`.
 - Owner-only auth (`allow.owner()`): each user manages their own players via `players.html`; the coach sees player names through the denormalized `Booking` fields, so Admins don't need Player read access.
 - Booking requires at least one saved player (the primary player is picked from a select); the optional 2nd player on a 1-on-2 booking is free text, not a saved Player record.
 
+### `BookingHistory`
+```
+{ id, action('BOOKED'|'CANCELLED'), sessionId, sessionDate, sessionTime, sessionTitle, userName, userEmail, mode?, playerName?, playerName2?, createdAt }
+```
+- Append-only audit trail, written alongside every booking/cancellation (`sessions.js`, `my-bookings.js`, and admin's "Book for User"/"Cancel Booking" in `admin.js`) — never updated or deleted by the client. Session/session-time fields are denormalized because the `Session` (or the `Booking` itself) may be deleted later; `createdAt` (auto-added by every Amplify Data model) is the event timestamp.
+- Owner can `create`/`read` their own entries (rendered as "My History" on `my-bookings.html`); `Admins` group can additionally `create`/`read` **any** entry (rendered as "Activity Log" on `admin.html`). Same ownership trade-off as `Booking`'s admin-create: an admin-driven action logs an entry owned by the admin, not the guardian, so it appears in the global Admin log but not on that guardian's own My History.
+
 **Known trade-off:** booking availability (`Session.booked`) is enforced with a read-then-write client-side check, not an atomic transaction — acceptable at this app's expected scale (a hockey club, not high-concurrency ticketing), but a simultaneous double-click race could theoretically double-book a slot. A custom AppSync resolver/Lambda would close this gap if it ever becomes a real problem.
 
 ---
@@ -80,8 +87,9 @@ Schema defined in `amplify/data/resource.ts`.
 ### `sessions.html` — Browse Sessions
 - Loads all `Session` records + (if logged in) the current user's `Booking` and `Player` records.
 - Each card: date, time, duration, and either a "Booked ✓"/"Booked" badge or a Book Now button — no spots-left count, since a session is simply open or taken.
+- An **unbooked** session drops off the list entirely once it's within an hour of its start time (`isWithinBookingCutoff()` in `app.js`) — same treatment as a past-dated session, since a walk-in booking that close to start isn't realistic. A booked session keeps showing (with its badge) regardless.
 - Book Now reveals an inline form: a Format `<select>` (1-on-1 / 1-on-2, the booker's choice), a required player `<select>` (saved players), and — only when 1-on-2 is selected — an optional free-text 2nd-player input. Zero saved players → message linking to `players.html`.
-- Confirm → creates a `Booking` with `mode`, `playerName` (+ `playerName2`) + sets `Session.booked = true`.
+- Confirm → creates a `Booking` with `mode`, `playerName` (+ `playerName2`) + sets `Session.booked = true` + logs a `BookingHistory` `BOOKED` entry.
 - Not logged in → Book button links to `login.html`.
 
 ### `login.html` — Login / Register / Verify
@@ -90,20 +98,22 @@ Schema defined in `amplify/data/resource.ts`.
 
 ### `my-bookings.html` — My Bookings (auth-gated)
 - Lists the current user's upcoming bookings (joined against `Session` for display), showing the booked format (1-on-1 / 1-on-2) and player name(s).
-- Cancel → deletes the `Booking` + sets `Session.booked = false`.
+- Cancel → deletes the `Booking` + sets `Session.booked = false` + logs a `BookingHistory` `CANCELLED` entry.
+- Below that, a "My History" table lists the user's own `BookingHistory` entries (booked + cancelled), newest first.
 
 ### `players.html` — My Players (auth-gated)
 - Add-player form (name only) + list of the user's saved players with Remove buttons.
 - Players are picked in the booking form on `sessions.html`; removing a player doesn't touch existing bookings (names are denormalized).
 
 ### `admin.html` — Admin Dashboard (Cognito `Admins` group gated)
-- Add Session form (date/time/duration/title only — no mode/capacity field, since format is the booker's choice), All Sessions table (date/time/title/Status "Open"/"Booked"/Who/Actions).
+- Add Session form (date/time/duration/title only — no mode/capacity field, since format is the booker's choice). The Time input has `step="300"` (5-minute increments, e.g. `19:50`, `17:05`), re-checked on submit via `isOnFiveMinuteStep()` in case the browser's picker doesn't enforce it. All Sessions table (date/time/title/Status "Open"/"Booked"/Who/Actions).
 - The Who column lists the booked format + player name(s) per booking with the guardian email.
 - Per-row actions, each an inline expando row (not a modal) toggled open below that session's row:
-  - **Edit** — always available; updates date/time/duration/title on the `Session`, even if it's booked (re-scheduling a booked slot doesn't touch its `Booking`).
-  - **Cancel Booking** (shown when booked) — deletes the session's `Booking` record(s) and flips `booked` back to `false`, freeing the slot without deleting the `Session` itself.
-  - **Book for User** (shown when open) — lets the admin create a `Booking` directly (guardian name/email + format + player name(s), typed in manually — there's no user directory to pick from). See the Booking trade-off note above.
+  - **Edit** — always available; updates date/time/duration/title on the `Session`, even if it's booked (re-scheduling a booked slot doesn't touch its `Booking`). Time input has the same 5-minute step + submit-time check as Add Session.
+  - **Cancel Booking** (shown when booked) — deletes the session's `Booking` record(s), flips `booked` back to `false`, and logs a `BookingHistory` `CANCELLED` entry per deleted booking.
+  - **Book for User** (shown when open) — lets the admin create a `Booking` directly (guardian name/email + format + player name(s), typed in manually — there's no user directory to pick from) and logs a `BookingHistory` `BOOKED` entry. See the Booking trade-off note above.
   - **Delete** — unchanged: removes the `Session` and cascades to its `Booking` records.
+- Below the sessions table, an "Activity Log" table lists **every** `BookingHistory` entry (all users), newest first — the admin-side counterpart to each user's own "My History" on `my-bookings.html`.
 
 ---
 

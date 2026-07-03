@@ -1,4 +1,4 @@
-import { client, isAdmin, escapeHtml, formatDate, formatTime, todayISO, isPastDate, bookingModeLabel, renderNav, renderFooter } from './app.js';
+import { client, isAdmin, escapeHtml, formatDate, formatTime, formatDateTime, todayISO, isPastDate, isOnFiveMinuteStep, bookingModeLabel, renderNav, renderFooter } from './app.js';
 
 // Attached immediately (not gated behind the async admin check below) so a
 // submit before that check resolves is handled by our code, not a native
@@ -22,7 +22,40 @@ document.getElementById('addForm').addEventListener('submit', addSession);
 
   await renderTable();
   await checkBrokenSessions();
+  await renderHistory();
 })();
+
+async function renderHistory() {
+  const { data: events } = await client.models.BookingHistory.list();
+  const wrap = document.getElementById('historyTableWrap');
+
+  if (events.length === 0) {
+    wrap.innerHTML = '<p style="color:#999;font-size:.9rem">No activity yet.</p>';
+    return;
+  }
+
+  const sorted = [...events].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  wrap.innerHTML = `
+    <table class="admin-table">
+      <thead>
+        <tr><th>When</th><th>Action</th><th>Session</th><th>Format / Player</th><th>Guardian</th></tr>
+      </thead>
+      <tbody>
+        ${sorted.map((ev) => {
+          const players = ev.playerName2
+            ? `${escapeHtml(ev.playerName)} &amp; ${escapeHtml(ev.playerName2)}`
+            : escapeHtml(ev.playerName || '');
+          return `<tr>
+            <td>${formatDateTime(ev.createdAt)}</td>
+            <td>${ev.action === 'BOOKED' ? '<span class="badge badge-booked">Booked</span>' : '<span class="badge badge-full">Cancelled</span>'}</td>
+            <td>${escapeHtml(ev.sessionTitle)} — ${formatDate(ev.sessionDate)} ${formatTime(ev.sessionTime)}</td>
+            <td>${ev.mode ? `${bookingModeLabel(ev.mode)} · ${players}` : '—'}</td>
+            <td>${escapeHtml(ev.userName)} &lt;${escapeHtml(ev.userEmail)}&gt;</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
 
 // list() nulls out (and attaches an error for) any Session item that fails
 // a non-null field on read - e.g. a legacy row written before `booked` was
@@ -127,7 +160,7 @@ async function renderTable(justCreated, justBooked) {
           </div>
           <div class="form-group">
             <label for="editTime-${s.id}">Time</label>
-            <input type="time" id="editTime-${s.id}" name="time" value="${s.time}" required />
+            <input type="time" id="editTime-${s.id}" name="time" value="${s.time}" step="300" required />
           </div>
           <div class="form-group">
             <label for="editDuration-${s.id}">Duration (min)</label>
@@ -280,6 +313,13 @@ async function addSession(e) {
     return;
   }
 
+  if (!isOnFiveMinuteStep(time)) {
+    const el = document.getElementById('addError');
+    el.textContent = 'Session time must be on a 5-minute step (e.g. 19:50, 17:05).';
+    el.style.display = 'block';
+    return;
+  }
+
   const overlap = await getOverlap(date, time, duration);
   if (overlap) {
     const el = document.getElementById('addError');
@@ -333,6 +373,12 @@ async function saveEditSession(id, form) {
     return;
   }
 
+  if (!isOnFiveMinuteStep(time)) {
+    errEl.textContent = 'Session time must be on a 5-minute step (e.g. 19:50, 17:05).';
+    errEl.style.display = 'block';
+    return;
+  }
+
   const overlap = await getOverlap(date, time, duration, id);
   if (overlap) {
     errEl.textContent = `This overlaps with "${overlap.title}" on ${formatDate(overlap.date)} at ${formatTime(overlap.time)} (${overlap.duration} min).`;
@@ -352,10 +398,24 @@ async function saveEditSession(id, form) {
 
 async function cancelBooking(id) {
   if (!confirm("Cancel this session's booking? This frees up the slot without deleting the session itself.")) return;
+  const { data: s } = await client.models.Session.get({ id });
   const { data: bookings } = await client.models.Booking.list({ filter: { sessionId: { eq: id } } });
   await Promise.all(bookings.map((b) => client.models.Booking.delete({ id: b.id })));
   await client.models.Session.update({ id, booked: false });
+  await Promise.all(bookings.map((b) => client.models.BookingHistory.create({
+    action: 'CANCELLED',
+    sessionId: id,
+    sessionDate: s.date,
+    sessionTime: s.time,
+    sessionTitle: s.title,
+    userName: b.userName,
+    userEmail: b.userEmail,
+    mode: b.mode,
+    playerName: b.playerName,
+    ...(b.playerName2 ? { playerName2: b.playerName2 } : {}),
+  })));
   await renderTable();
+  await renderHistory();
 }
 
 async function submitBookForUser(id, form) {
@@ -393,7 +453,20 @@ async function submitBookForUser(id, form) {
   }
 
   await client.models.Session.update({ id, booked: true });
+  await client.models.BookingHistory.create({
+    action: 'BOOKED',
+    sessionId: id,
+    sessionDate: s.date,
+    sessionTime: s.time,
+    sessionTitle: s.title,
+    userName,
+    userEmail,
+    mode,
+    playerName,
+    ...(playerName2 ? { playerName2 } : {}),
+  });
   await renderTable(null, { sessionId: id, booking: created });
+  await renderHistory();
 }
 
 async function deleteSession(id) {

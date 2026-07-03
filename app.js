@@ -101,6 +101,22 @@ export const todayISO = () => {
 };
 export const isPastDate = (dateStr) => dateStr < todayISO();
 
+// step="300" on <input type="time"> only constrains the native picker - typing
+// a value directly (or a browser that ignores step) can still submit an
+// off-grid time, so this is checked again on submit.
+export const isOnFiveMinuteStep = (timeStr) => Number(timeStr.split(':')[1]) % 5 === 0;
+
+// isPastDate only compares the date (day granularity), so a session later
+// today still counts as "upcoming" right up until it starts. This closes the
+// walk-in booking window an hour early (and also covers a same-day session
+// whose start time has already passed, which isPastDate alone can't catch).
+export const isWithinBookingCutoff = (dateStr, timeStr) => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [h, min] = timeStr.split(':').map(Number);
+  const start = new Date(y, m - 1, d, h, min);
+  return start.getTime() - Date.now() < 60 * 60 * 1000;
+};
+
 export const formatDate = (dateStr) => {
   const [y, m, d] = dateStr.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString('en-CA', {
@@ -110,6 +126,13 @@ export const formatDate = (dateStr) => {
 
 // The booker picks the format at booking time - sessions have no fixed mode.
 export const bookingModeLabel = (mode) => (mode === 'ONE_ON_TWO' ? '1-on-2' : '1-on-1');
+
+// For BookingHistory.createdAt (an AWSDateTime string) - unlike session
+// date/time, this is a real instant, so it's fine to let the browser render
+// it in local time via a normal Date object rather than string-splitting.
+export const formatDateTime = (isoStr) => new Date(isoStr).toLocaleString('en-CA', {
+  month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+});
 
 export const formatTime = (timeStr) => {
   const [h, min] = timeStr.split(':').map(Number);

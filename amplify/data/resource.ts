@@ -56,6 +56,36 @@ const schema = a.schema({
       name: a.string().required(),
     })
     .authorization((allow) => [allow.owner()]),
+
+  // Append-only audit trail of booking activity. Kept separate from Booking
+  // itself (rather than e.g. a soft-delete flag on Booking) because a
+  // cancelled Booking record is actually deleted - the log is what survives
+  // that delete so "what happened" isn't lost along with the booking.
+  // createdAt (auto-added by every Amplify Data model) is the event timestamp.
+  BookingHistory: a
+    .model({
+      action: a.enum(['BOOKED', 'CANCELLED']),
+      sessionId: a.id().required(),
+      sessionDate: a.string().required(), // 'YYYY-MM-DD', denormalized - the Session itself may later be deleted
+      sessionTime: a.string().required(), // 'HH:MM'
+      sessionTitle: a.string().required(),
+      userName: a.string().required(),
+      userEmail: a.string().required(),
+      mode: a.enum(['ONE_ON_ONE', 'ONE_ON_TWO']),
+      playerName: a.string(),
+      playerName2: a.string(),
+    })
+    .authorization((allow) => [
+      // Owner can create (their own action) and read their own history, but
+      // never edit/delete it - it's a record of what happened, not a
+      // reflection of current state.
+      allow.owner().to(['create', 'read']),
+      // Same trade-off as Booking's admin-create: an admin-driven action
+      // (Book for User / Cancel Booking on the admin dashboard) logs an entry
+      // owned by the admin's own identity, not the guardian's, so it shows in
+      // the global Admin log but not on that guardian's own history.
+      allow.group('Admins').to(['create', 'read']),
+    ]),
 });
 
 export type Schema = ClientSchema<typeof schema>;

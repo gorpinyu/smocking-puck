@@ -1,4 +1,4 @@
-import { client, getCurrentUser, escapeHtml, formatDate, formatTime, isPastDate, renderNav, renderFooter } from './app.js';
+import { client, getCurrentUser, escapeHtml, formatDate, formatTime, isPastDate, isWithinBookingCutoff, renderNav, renderFooter } from './app.js';
 
 (async () => {
   await renderNav();
@@ -38,6 +38,10 @@ async function renderSessions() {
 
   const upcoming = sessions
     .filter((s) => !isPastDate(s.date))
+    // An unbooked session within an hour of its start (or already started
+    // today) is too late for a walk-in booking - drop it the same as a past
+    // session. A booked one still shows so its "Booked" badge stays visible.
+    .filter((s) => s.booked || !isWithinBookingCutoff(s.date, s.time))
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 
   let myBookings = [];
@@ -67,7 +71,7 @@ async function renderSessions() {
     } else if (sessions.length === 0) {
       msg.textContent = `Found ${rawSessions.length} session record(s), but none could be read (a data issue, not "no sessions") — check the Admin dashboard.`;
     } else {
-      msg.textContent = `Found ${sessions.length} session record(s), but none are dated today or later.`;
+      msg.textContent = `Found ${sessions.length} session record(s), but none are currently open (either dated in the past, or unbooked and starting within the hour).`;
     }
     return;
   }
@@ -188,5 +192,17 @@ async function bookSession(id, mode, playerName, playerName2) {
     ...(playerName2 ? { playerName2 } : {}),
   });
   await client.models.Session.update({ id, booked: true });
+  await client.models.BookingHistory.create({
+    action: 'BOOKED',
+    sessionId: id,
+    sessionDate: s.date,
+    sessionTime: s.time,
+    sessionTitle: s.title,
+    userName: user.name,
+    userEmail: user.email,
+    mode,
+    playerName,
+    ...(playerName2 ? { playerName2 } : {}),
+  });
   await renderSessions();
 }
