@@ -1,4 +1,4 @@
-import { client, isAdmin, escapeHtml, formatDate, formatTime, formatDateTime, todayISO, isPastDate, isOnFiveMinuteStep, bookingModeLabel, renderNav, renderFooter } from './app.js';
+import { client, isAdmin, escapeHtml, formatDate, formatTime, formatDateTime, todayISO, isPastDate, isWithinBookingCutoff, hourSelectOptionsHTML, minuteSelectOptionsHTML, bookingModeLabel, renderNav, renderFooter } from './app.js';
 
 // Attached immediately (not gated behind the async admin check below) so a
 // submit before that check resolves is handled by our code, not a native
@@ -19,6 +19,8 @@ document.getElementById('addForm').addEventListener('submit', addSession);
   await renderFooter();
 
   document.getElementById('newDate').min = todayISO();
+  document.getElementById('newTimeHour').innerHTML = hourSelectOptionsHTML('17');
+  document.getElementById('newTimeMinute').innerHTML = minuteSelectOptionsHTML('00');
 
   await renderTable();
   await checkBrokenSessions();
@@ -112,13 +114,35 @@ async function renderTable(justCreated, justBooked) {
     sessions.push(justCreated);
   }
   sessions.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
-  const wrap = document.getElementById('sessionsTableWrap');
 
-  if (sessions.length === 0) {
-    wrap.innerHTML = '<p style="color:#999;font-size:.9rem">No sessions yet. Add one above.</p>';
-    return;
+  // An unbooked session past its 1hr-before-start cutoff can no longer be
+  // booked by a user (see isWithinBookingCutoff in sessions.js) - move it out
+  // of the main table into its own section below instead of leaving it mixed
+  // in and looking bookable.
+  const activeSessions = sessions.filter((s) => s.booked || !isWithinBookingCutoff(s.date, s.time));
+  const expiredSessions = sessions.filter((s) => !s.booked && isWithinBookingCutoff(s.date, s.time));
+
+  const wrap = document.getElementById('sessionsTableWrap');
+  const expiredWrap = document.getElementById('expiredSessionsWrap');
+  const expiredCard = document.getElementById('expiredSessionsCard');
+
+  if (activeSessions.length === 0) {
+    wrap.innerHTML = sessions.length === 0
+      ? '<p style="color:#999;font-size:.9rem">No sessions yet. Add one above.</p>'
+      : '<p style="color:#999;font-size:.9rem">No open sessions - see Expired Sessions below.</p>';
+  } else {
+    wrap.innerHTML = await buildSessionsTable(activeSessions, justBooked);
+    wireSessionRowActions(wrap);
   }
 
+  expiredCard.style.display = expiredSessions.length === 0 ? 'none' : '';
+  if (expiredSessions.length > 0) {
+    expiredWrap.innerHTML = await buildSessionsTable(expiredSessions, justBooked);
+    wireSessionRowActions(expiredWrap);
+  }
+}
+
+async function buildSessionsTable(sessions, justBooked) {
   const rowsHtml = await Promise.all(sessions.map(async (s) => {
     const { data: rawBookings } = await client.models.Booking.list({ filter: { sessionId: { eq: s.id } } });
     const bookings = rawBookings.filter(Boolean);
@@ -141,7 +165,7 @@ async function renderTable(justCreated, justBooked) {
       <td>${formatDate(s.date)}</td>
       <td>${formatTime(s.time)}</td>
       <td>${escapeHtml(s.title)}</td>
-      <td style="text-align:center">${s.booked ? 'Booked' : 'Open'}</td>
+      <td style="text-align:center">${s.booked ? 'Booked' : (isWithinBookingCutoff(s.date, s.time) ? 'Expired' : 'Open')}</td>
       <td class="who">${who}</td>
       <td class="admin-actions">
         <button class="btn btn-outline btn-sm" data-action="edit" data-id="${s.id}">Edit</button>
@@ -159,8 +183,12 @@ async function renderTable(justCreated, justBooked) {
             <input type="date" id="editDate-${s.id}" name="date" value="${s.date}" min="${todayISO()}" required />
           </div>
           <div class="form-group">
-            <label for="editTime-${s.id}">Time</label>
-            <input type="time" id="editTime-${s.id}" name="time" value="${s.time}" step="300" required />
+            <label for="editTimeHour-${s.id}">Time</label>
+            <div class="time-select-group">
+              <select id="editTimeHour-${s.id}" name="timeHour" required>${hourSelectOptionsHTML(s.time.split(':')[0])}</select>
+              <span>:</span>
+              <select id="editTimeMinute-${s.id}" name="timeMinute" required>${minuteSelectOptionsHTML(s.time.split(':')[1])}</select>
+            </div>
           </div>
           <div class="form-group">
             <label for="editDuration-${s.id}">Duration (min)</label>
@@ -215,7 +243,7 @@ async function renderTable(justCreated, justBooked) {
     </tr>` : ''}`;
   }));
 
-  wrap.innerHTML = `
+  return `
     <table class="admin-table">
       <thead>
         <tr>
@@ -229,7 +257,9 @@ async function renderTable(justCreated, justBooked) {
       </thead>
       <tbody>${rowsHtml.join('')}</tbody>
     </table>`;
+}
 
+function wireSessionRowActions(wrap) {
   wrap.querySelectorAll('[data-action="delete"]').forEach((btn) => {
     btn.addEventListener('click', () => deleteSession(btn.dataset.id));
   });
@@ -302,20 +332,13 @@ async function addSession(e) {
   document.getElementById('addError').style.display = 'none';
 
   const date = document.getElementById('newDate').value;
-  const time = document.getElementById('newTime').value;
+  const time = `${document.getElementById('newTimeHour').value}:${document.getElementById('newTimeMinute').value}`;
   const duration = parseInt(document.getElementById('newDuration').value);
   const title = document.getElementById('newTitle').value.trim();
 
   if (isPastDate(date)) {
     const el = document.getElementById('addError');
     el.textContent = 'Session date must be today or in the future.';
-    el.style.display = 'block';
-    return;
-  }
-
-  if (!isOnFiveMinuteStep(time)) {
-    const el = document.getElementById('addError');
-    el.textContent = 'Session time must be on a 5-minute step (e.g. 19:50, 17:05).';
     el.style.display = 'block';
     return;
   }
@@ -363,18 +386,12 @@ async function saveEditSession(id, form) {
   errEl.style.display = 'none';
 
   const date = form.date.value;
-  const time = form.time.value;
+  const time = `${form.timeHour.value}:${form.timeMinute.value}`;
   const duration = parseInt(form.duration.value);
   const title = form.title.value.trim();
 
   if (isPastDate(date)) {
     errEl.textContent = 'Session date must be today or in the future.';
-    errEl.style.display = 'block';
-    return;
-  }
-
-  if (!isOnFiveMinuteStep(time)) {
-    errEl.textContent = 'Session time must be on a 5-minute step (e.g. 19:50, 17:05).';
     errEl.style.display = 'block';
     return;
   }
@@ -431,17 +448,17 @@ async function submitBookForUser(id, form) {
   const { data: s } = await client.models.Session.get({ id });
   if (!s) return;
 
-  // Admins have no way to look up another user's real Cognito identity from
-  // the client (no directory API wired up), so this booking is owned by the
-  // admin's own account rather than the guardian's - it'll show up here and
-  // in the session's "Who" list, but not on that guardian's own My Bookings
-  // page. Good enough for "coach takes a booking over the phone"; a real fix
-  // needs an admin-only user-lookup Lambda.
-  const { data: created, errors } = await client.models.Booking.create({
+  // Looks the guardian up by email and writes the Booking/BookingHistory
+  // owned by them, not the admin - see amplify/functions/book-for-user.
+  // Falls back to admin-owned (attributedToGuardian: false) if that email
+  // has no account yet, same as the old behavior.
+  const { data: created, errors } = await client.mutations.bookForUser({
     sessionId: id,
     sessionDate: s.date,
-    userName,
-    userEmail,
+    sessionTime: s.time,
+    sessionTitle: s.title,
+    guardianEmail: userEmail,
+    guardianName: userName,
     mode,
     playerName,
     ...(playerName2 ? { playerName2 } : {}),
@@ -453,18 +470,9 @@ async function submitBookForUser(id, form) {
   }
 
   await client.models.Session.update({ id, booked: true });
-  await client.models.BookingHistory.create({
-    action: 'BOOKED',
-    sessionId: id,
-    sessionDate: s.date,
-    sessionTime: s.time,
-    sessionTitle: s.title,
-    userName,
-    userEmail,
-    mode,
-    playerName,
-    ...(playerName2 ? { playerName2 } : {}),
-  });
+  if (!created.attributedToGuardian) {
+    alert(`No account found for ${userEmail} - this booking was recorded under your admin account instead. It'll show up in the Who list and Activity Log, but not on ${userName}'s own My Bookings/My History until they sign up with this email.`);
+  }
   await renderTable(null, { sessionId: id, booking: created });
   await renderHistory();
 }

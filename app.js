@@ -101,10 +101,16 @@ export const todayISO = () => {
 };
 export const isPastDate = (dateStr) => dateStr < todayISO();
 
-// step="300" on <input type="time"> only constrains the native picker - typing
-// a value directly (or a browser that ignores step) can still submit an
-// off-grid time, so this is checked again on submit.
-export const isOnFiveMinuteStep = (timeStr) => Number(timeStr.split(':')[1]) % 5 === 0;
+// A native <input type="time"> with step="300" still lets most browsers'
+// pickers scroll/type any minute value, ignoring the step - so the admin time
+// fields use a pair of <select>s instead, built from these, which can only
+// ever offer 5-minute-step values in the first place.
+export const hourSelectOptionsHTML = (selected) => Array.from({ length: 24 }, (_, h) => {
+  const v = String(h).padStart(2, '0');
+  return `<option value="${v}"${v === selected ? ' selected' : ''}>${v}</option>`;
+}).join('');
+
+export const minuteSelectOptionsHTML = (selected) => Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')).map((v) => `<option value="${v}"${v === selected ? ' selected' : ''}>${v}</option>`).join('');
 
 // isPastDate only compares the date (day granularity), so a session later
 // today still counts as "upcoming" right up until it starts. This closes the

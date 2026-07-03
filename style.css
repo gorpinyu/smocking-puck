@@ -843,6 +843,9 @@ main { flex: 1; }
 @media (max-width: 580px) { .admin-form { grid-template-columns: 1fr; } }
 .admin-form .form-group { margin-bottom: 0; }
 .admin-form .full-width { grid-column: 1 / -1; }
+.time-select-group { display: flex; align-items: center; gap: 0.4rem; }
+.time-select-group select { width: auto; flex: 1 1 0; }
+.time-select-group span { color: var(--body); font-weight: 700; }
 
 .admin-table {
   width: 100%;

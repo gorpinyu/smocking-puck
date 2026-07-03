@@ -25,7 +25,7 @@ Teenager-friendly website for booking and cancelling hockey shooting skills sess
 | `login.html` / `login.js` | Log in, Register (+ email verification), "Continue with Google" |
 | `style.css` | Shared styles |
 | `app.js` | Shared ES module (Amplify config, auth helpers, Data client, nav renderer, formatters) |
-| `amplify/` | Backend-as-code: `auth/resource.ts`, `data/resource.ts`, `backend.ts` |
+| `amplify/` | Backend-as-code: `auth/resource.ts`, `data/resource.ts`, `backend.ts`, `functions/book-for-user/` |
 | `vite.config.js` | Multi-page build config (one entry per HTML page) |
 
 All page scripts are ES modules (`<script type="module">`) that `import` from `./app.js`.
@@ -55,8 +55,7 @@ Schema defined in `amplify/data/resource.ts`.
 ```
 { id, sessionId, sessionDate, userName, userEmail, mode('ONE_ON_ONE'|'ONE_ON_TWO'), playerName, playerName2? }
 ```
-- Owner-based auth: each user can only create/read/delete their **own** bookings. `Admins` group can additionally read/create/delete any booking (read+delete for the admin "Who" list and cascading deletes when a session is removed; create for the admin "Book for User" flow below).
-- **Known trade-off:** a booking the admin creates via "Book for User" is owned by the admin's own Cognito identity, not the guardian's — there's no client-reachable directory API to look up another user's real `sub`. It shows up correctly in the admin "Who" list, but not on that guardian's own My Bookings page. Fine for "coach takes a booking over the phone"; a real fix needs an admin-only user-lookup Lambda.
+- Owner-based auth: each user can only create/read/delete their **own** bookings. `Admins` group can additionally `read`/`delete` any booking (for the admin "Who" list and cascading deletes when a session is removed) — **not** `create`: see `bookForUser` below for how the admin dashboard creates one instead.
 - `userName`/`userEmail` (the booking guardian) and `mode`/`playerName`/`playerName2` (the booked format and who's on the ice) are denormalized onto the booking at creation time so the admin dashboard doesn't need a separate user-lookup function.
 - `mode` is the booker's explicit choice in the booking form (`bookingModeLabel()` in `app.js` renders it) — `playerName2` stays optional even for a `ONE_ON_TWO` booking (a booker might reserve the 1-on-2 format but only bring one player).
 
@@ -72,7 +71,12 @@ Schema defined in `amplify/data/resource.ts`.
 { id, action('BOOKED'|'CANCELLED'), sessionId, sessionDate, sessionTime, sessionTitle, userName, userEmail, mode?, playerName?, playerName2?, createdAt }
 ```
 - Append-only audit trail, written alongside every booking/cancellation (`sessions.js`, `my-bookings.js`, and admin's "Book for User"/"Cancel Booking" in `admin.js`) — never updated or deleted by the client. Session/session-time fields are denormalized because the `Session` (or the `Booking` itself) may be deleted later; `createdAt` (auto-added by every Amplify Data model) is the event timestamp.
-- Owner can `create`/`read` their own entries (rendered as "My History" on `my-bookings.html`); `Admins` group can additionally `create`/`read` **any** entry (rendered as "Activity Log" on `admin.html`). Same ownership trade-off as `Booking`'s admin-create: an admin-driven action logs an entry owned by the admin, not the guardian, so it appears in the global Admin log but not on that guardian's own My History.
+- Owner can `create`/`read` their own entries (rendered as "My History" on `my-bookings.html`); `Admins` group can additionally `create`/`read` **any** entry (rendered as "Activity Log" on `admin.html`). A CANCELLED entry from the admin's "Cancel Booking" action is written through this rule and is therefore owned by the admin, not the guardian — same trade-off as below, just not worth a second Lambda for the one remaining case (it still appears in the global Admin log either way).
+
+### `bookForUser` (custom mutation, `Admins` group only)
+Backs the admin dashboard's "Book for User" action. Defined in `data/resource.ts`, backed by the `book-for-user` Lambda (`amplify/functions/book-for-user/`). A normal API `create` can only ever be owned by the caller — so a `Booking`/`BookingHistory` created that way by an admin was always owned by the admin, not the guardian it was actually for, meaning it never showed up on that guardian's own My Bookings/My History. This mutation fixes that: the Lambda looks the guardian up in Cognito by email (`ListUsers`, granted via `access: (allow) => [allow.resource(bookForUserFn).to(['listUsers'])]` in `auth/resource.ts`) and writes the `Booking`/`BookingHistory` rows **directly to DynamoDB** (via table grants in `backend.ts`, bypassing the model rules above entirely) with `owner` set to that guardian's real Cognito identity.
+- **Owner string format:** confirmed empirically against the deployed backend — it's just the `cognito:username` claim value as-is (a plain-email user's is their Cognito Username/sub; a Google user's is `google_<id>`), not a composite string.
+- **Fallback:** if no Cognito user exists for that email (e.g. a phone booking for someone who's never signed up), the Lambda falls back to attributing the record to the *admin's own* identity instead of blocking the booking — same old behavior, just now the exception rather than the rule. The mutation returns `attributedToGuardian: false` in that case and `admin.js` surfaces a one-time `alert()` explaining it.
 
 **Known trade-off:** booking availability (`Session.booked`) is enforced with a read-then-write client-side check, not an atomic transaction — acceptable at this app's expected scale (a hockey club, not high-concurrency ticketing), but a simultaneous double-click race could theoretically double-book a slot. A custom AppSync resolver/Lambda would close this gap if it ever becomes a real problem.
 
@@ -106,14 +110,15 @@ Schema defined in `amplify/data/resource.ts`.
 - Players are picked in the booking form on `sessions.html`; removing a player doesn't touch existing bookings (names are denormalized).
 
 ### `admin.html` — Admin Dashboard (Cognito `Admins` group gated)
-- Add Session form (date/time/duration/title only — no mode/capacity field, since format is the booker's choice). The Time input has `step="300"` (5-minute increments, e.g. `19:50`, `17:05`), re-checked on submit via `isOnFiveMinuteStep()` in case the browser's picker doesn't enforce it. All Sessions table (date/time/title/Status "Open"/"Booked"/Who/Actions).
+- Add Session form (date/time/duration/title only — no mode/capacity field, since format is the booker's choice). Time is two `<select>`s (Hour 00-23, Minute 00/05/10.../55, built by `hourSelectOptionsHTML()`/`minuteSelectOptionsHTML()` in `app.js`) rather than a native `<input type="time">` — a `step="300"` attribute only hints at 5-minute increments and most browsers' native pickers let you scroll/type past it anyway, where two constrained selects can't ever produce an off-grid value in the first place.
+- All Sessions table (date/time/title/Status "Open"/"Booked"/Who/Actions) shows only sessions that are still bookable or already booked. An **Expired Sessions** card below it (hidden entirely when empty) holds unbooked sessions that are past their 1hr-before-start booking cutoff (`isWithinBookingCutoff()`, same check `sessions.html` uses to drop them from the public list) — Status reads "Expired" there instead of "Open". Both tables share the same row-building/action-wiring code (`buildSessionsTable()`/`wireSessionRowActions()` in `admin.js`), so every action below works identically in either section.
 - The Who column lists the booked format + player name(s) per booking with the guardian email.
 - Per-row actions, each an inline expando row (not a modal) toggled open below that session's row:
-  - **Edit** — always available; updates date/time/duration/title on the `Session`, even if it's booked (re-scheduling a booked slot doesn't touch its `Booking`). Time input has the same 5-minute step + submit-time check as Add Session.
-  - **Cancel Booking** (shown when booked) — deletes the session's `Booking` record(s), flips `booked` back to `false`, and logs a `BookingHistory` `CANCELLED` entry per deleted booking.
-  - **Book for User** (shown when open) — lets the admin create a `Booking` directly (guardian name/email + format + player name(s), typed in manually — there's no user directory to pick from) and logs a `BookingHistory` `BOOKED` entry. See the Booking trade-off note above.
+  - **Edit** — always available (including on an expired session); updates date/time/duration/title on the `Session`, even if it's booked (re-scheduling a booked slot doesn't touch its `Booking`). Same Hour/Minute selects as Add Session.
+  - **Cancel Booking** (shown when booked) — deletes the session's `Booking` record(s), flips `booked` back to `false`, and logs a `BookingHistory` `CANCELLED` entry per deleted booking (owned by the admin — see the trade-off note above).
+  - **Book for User** (shown when open, including expired-but-open sessions) — lets the admin create a `Booking` (guardian name/email + format + player name(s), typed in manually — there's no user directory to pick from) via the `bookForUser` custom mutation, which owns the record correctly by the guardian's own Cognito identity. See `bookForUser` above.
   - **Delete** — unchanged: removes the `Session` and cascades to its `Booking` records.
-- Below the sessions table, an "Activity Log" table lists **every** `BookingHistory` entry (all users), newest first — the admin-side counterpart to each user's own "My History" on `my-bookings.html`.
+- Below that, an "Activity Log" table lists **every** `BookingHistory` entry (all users), newest first — the admin-side counterpart to each user's own "My History" on `my-bookings.html`.
 
 ---
 
