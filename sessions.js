@@ -57,6 +57,18 @@ async function renderSessions() {
   if (upcoming.length === 0) {
     grid.style.display = 'none';
     empty.style.display = 'block';
+    // Distinguish "genuinely nothing scheduled" from "sessions exist but
+    // none are upcoming" / "sessions exist but failed to load" instead of
+    // always showing the same generic message - the three have different
+    // causes and otherwise look identical from the outside.
+    const msg = empty.querySelector('p');
+    if (rawSessions.length === 0) {
+      msg.textContent = 'No upcoming sessions right now — check back soon!';
+    } else if (sessions.length === 0) {
+      msg.textContent = `Found ${rawSessions.length} session record(s), but none could be read (a data issue, not "no sessions") — check the Admin dashboard.`;
+    } else {
+      msg.textContent = `Found ${sessions.length} session record(s), but none are dated today or later.`;
+    }
     return;
   }
 
