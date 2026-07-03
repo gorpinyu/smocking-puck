@@ -1,5 +1,4 @@
 import { defineAuth, secret } from '@aws-amplify/backend';
-import { bookForUserFn } from '../functions/book-for-user/resource';
 
 // Replace the amplifyapp.com placeholder below with the real Amplify Hosting
 // domain once it exists after the first deploy, then redeploy.
@@ -27,6 +26,7 @@ export const auth = defineAuth({
     },
   },
   groups: ['Admins'],
-  // Lets bookForUserFn resolve a guardian's real Cognito identity by email.
-  access: (allow) => [allow.resource(bookForUserFn).to(['listUsers'])],
+  // bookForUserFn's listUsers permission is granted directly on its role in
+  // backend.ts instead of via `access` here - see the comment in
+  // functions/book-for-user/resource.ts for why (avoids a stack cycle).
 });
