@@ -167,6 +167,7 @@ export async function renderNav() {
 
   document.getElementById('hamburgerBtn').addEventListener('click', () => {
     document.getElementById('mobileMenu').classList.toggle('open');
+    document.getElementById('hamburgerBtn').classList.toggle('open');
   });
   document.querySelectorAll('[data-action="logout"]').forEach((btn) => {
     btn.addEventListener('click', logout);

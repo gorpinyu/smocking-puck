@@ -127,8 +127,11 @@ nav {
   height: 2px;
   background: var(--white);
   border-radius: 2px;
-  transition: transform 0.25s;
+  transition: transform 0.25s, opacity 0.25s;
 }
+.hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.hamburger.open span:nth-child(2) { opacity: 0; }
+.hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
 .mobile-menu {
   display: none;
@@ -268,6 +271,27 @@ main { flex: 1; }
   flex-wrap: wrap;
   position: relative;
   z-index: 1;
+}
+
+@media (max-width: 560px) {
+  /* At narrow widths the flex-wrap above breaks the three stats unevenly
+     (one alone on its own row, two on the next) - a vertical stack with
+     dividers reads cleaner than that lopsided wrap. */
+  .hero-stats {
+    flex-direction: column;
+    align-items: center;
+    gap: 1.1rem;
+  }
+  .hero-stat {
+    padding-bottom: 1.1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    width: 100%;
+    max-width: 240px;
+  }
+  .hero-stat:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
 }
 
 .hero-stat {
