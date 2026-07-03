@@ -14,13 +14,21 @@ async function renderSessions() {
     user ? {} : { authMode: 'identityPool' },
   );
   // list() resolves with { data, errors } instead of throwing on a GraphQL/
-  // authorization failure - left unchecked, that silently renders as "no
-  // upcoming sessions" instead of the load failure it actually is.
-  if (errors?.length) {
+  // authorization failure. But errors here aren't necessarily fatal: a
+  // single legacy row missing a non-null field (e.g. `booked` on a Session
+  // written before that field existed) makes AppSync attach an error *and*
+  // null out just that one item, while every other item still comes back
+  // fine in `data`. Only treat this as a real failure when there's no
+  // usable data at all - otherwise fall through and let the null-filter
+  // below drop the bad row like it already does.
+  if (errors?.length && !rawSessions) {
     const el = document.getElementById('loadError');
     el.textContent = `Couldn't load sessions: ${errors[0].message || 'unknown error'}`;
     el.style.display = 'block';
     return;
+  }
+  if (errors?.length) {
+    console.warn('Session.list() returned partial data with errors (likely a corrupted legacy row):', errors);
   }
   // AppSync nulls out individual list items (rather than failing the whole
   // query) when a stored record can't satisfy a non-null field on read -

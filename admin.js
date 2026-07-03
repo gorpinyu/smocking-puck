@@ -21,7 +21,47 @@ document.getElementById('addForm').addEventListener('submit', addSession);
   document.getElementById('newDate').min = todayISO();
 
   await renderTable();
+  await checkBrokenSessions();
 })();
+
+// list() nulls out (and attaches an error for) any Session item that fails
+// a non-null field on read - e.g. a legacy row written before `booked` was
+// added to the schema. renderTable() already filters those out silently so
+// the rest of the table still works, but that leaves the broken row
+// invisible and un-deletable forever. Diff an id-only fetch (which sidesteps
+// the field violation entirely, since `booked` is never requested) against
+// the full fetch to find them, and offer to clean them up.
+async function checkBrokenSessions() {
+  const alertEl = document.getElementById('brokenSessionsAlert');
+  const { data: idOnly } = await client.models.Session.list({ selectionSet: ['id'] });
+  const { data: rawFull } = await client.models.Session.list();
+  const fullIds = new Set(rawFull.filter(Boolean).map((s) => s.id));
+  const brokenIds = (idOnly || []).filter(Boolean).map((s) => s.id).filter((id) => !fullIds.has(id));
+
+  if (brokenIds.length === 0) {
+    alertEl.style.display = 'none';
+    return;
+  }
+
+  const plural = brokenIds.length > 1;
+  alertEl.innerHTML = `
+    ${brokenIds.length} session record${plural ? 's are' : ' is'} missing required data (likely created before a schema change) and can't be shown or edited above.
+    <button class="btn btn-danger btn-sm" id="cleanupBrokenBtn" style="margin-left:.5rem">Delete ${plural ? 'them' : 'it'}</button>
+  `;
+  alertEl.style.display = 'block';
+  document.getElementById('cleanupBrokenBtn').addEventListener('click', () => cleanupBrokenSessions(brokenIds));
+}
+
+async function cleanupBrokenSessions(ids) {
+  if (!confirm(`Delete ${ids.length} broken session record(s)? This also removes any bookings tied to them.`)) return;
+  for (const id of ids) {
+    const { data: bookings } = await client.models.Booking.list({ filter: { sessionId: { eq: id } } });
+    await Promise.all((bookings || []).filter(Boolean).map((b) => client.models.Booking.delete({ id: b.id })));
+    await client.models.Session.delete({ id });
+  }
+  await renderTable();
+  await checkBrokenSessions();
+}
 
 async function renderTable(justCreated, justBooked) {
   const { data: rawSessions } = await client.models.Session.list();
