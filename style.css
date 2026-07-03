@@ -173,7 +173,13 @@ nav {
 .mobile-menu a:last-child,
 .mobile-menu button:last-child { border-bottom: none; }
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
+  /* Below 900px the full desktop nav-links row (up to 6 items for a
+     logged-in admin: Sessions/My Bookings/My Players/Admin/Hi, name!/
+     Logout) runs out of room and wraps mid-row, breaking the nav's fixed
+     height - the hamburger's own dropdown handles that item count fine
+     down to phone widths, so switch to it well before the wrap point
+     instead of right at phone width. */
   .nav-links { display: none; }
   .hamburger { display: flex; }
 }
