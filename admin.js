@@ -92,7 +92,17 @@ async function addSession(e) {
     return;
   }
 
-  await client.models.Session.create({ title, date, time, duration, booked: false });
+  // Amplify Data mutations resolve with { data, errors } instead of throwing
+  // on GraphQL/authorization failures - without this check a failed create
+  // still fell through to the "success" banner below despite nothing being
+  // written, which is exactly the bug this comment is guarding against.
+  const { errors } = await client.models.Session.create({ title, date, time, duration, booked: false });
+  if (errors?.length) {
+    const el = document.getElementById('addError');
+    el.textContent = errors[0].message || 'Failed to add session.';
+    el.style.display = 'block';
+    return;
+  }
 
   document.getElementById('addSuccess').style.display = 'block';
   document.getElementById('addForm').reset();
