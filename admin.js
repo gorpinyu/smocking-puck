@@ -189,6 +189,29 @@ async function renderTable(justCreated, justBooked) {
   });
 }
 
+const timeToMinutes = (t) => {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+};
+
+// One coach running the program means two sessions on the same date with
+// overlapping [start, start+duration) windows can't actually both happen.
+function findOverlap(sessions, date, time, duration, excludeId) {
+  const start = timeToMinutes(time);
+  const end = start + duration;
+  return sessions.find((s) => {
+    if (s.id === excludeId || s.date !== date) return false;
+    const sStart = timeToMinutes(s.time);
+    const sEnd = sStart + s.duration;
+    return start < sEnd && sStart < end;
+  });
+}
+
+async function getOverlap(date, time, duration, excludeId) {
+  const { data: rawSessions } = await client.models.Session.list();
+  return findOverlap(rawSessions.filter(Boolean), date, time, duration, excludeId);
+}
+
 function hideRow(id) {
   const row = document.getElementById(id);
   if (row) row.style.display = 'none';
@@ -213,6 +236,14 @@ async function addSession(e) {
   if (isPastDate(date)) {
     const el = document.getElementById('addError');
     el.textContent = 'Session date must be today or in the future.';
+    el.style.display = 'block';
+    return;
+  }
+
+  const overlap = await getOverlap(date, time, duration);
+  if (overlap) {
+    const el = document.getElementById('addError');
+    el.textContent = `This overlaps with "${overlap.title}" on ${formatDate(overlap.date)} at ${formatTime(overlap.time)} (${overlap.duration} min).`;
     el.style.display = 'block';
     return;
   }
@@ -258,6 +289,13 @@ async function saveEditSession(id, form) {
 
   if (isPastDate(date)) {
     errEl.textContent = 'Session date must be today or in the future.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const overlap = await getOverlap(date, time, duration, id);
+  if (overlap) {
+    errEl.textContent = `This overlaps with "${overlap.title}" on ${formatDate(overlap.date)} at ${formatTime(overlap.time)} (${overlap.duration} min).`;
     errEl.style.display = 'block';
     return;
   }
