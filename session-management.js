@@ -140,12 +140,16 @@ async function renderTable(justCreated, justBooked) {
 
   expiredCard.style.display = expiredSessions.length === 0 ? 'none' : '';
   if (expiredSessions.length > 0) {
-    expiredWrap.innerHTML = await buildSessionsTable(expiredSessions, justBooked);
+    // readOnly: an expired slot is already unbookable to real users and its
+    // start time has passed, so editing its date/time or manually booking it
+    // here would be editing/booking something that's effectively already
+    // over - Delete (cleanup) is the only action that still makes sense.
+    expiredWrap.innerHTML = await buildSessionsTable(expiredSessions, justBooked, true);
     wireSessionRowActions(expiredWrap);
   }
 }
 
-async function buildSessionsTable(sessions, justBooked) {
+async function buildSessionsTable(sessions, justBooked, readOnly = false) {
   const rowsHtml = await Promise.all(sessions.map(async (s) => {
     const { data: rawBookings } = await client.models.Booking.list({ filter: { sessionId: { eq: s.id } } });
     const bookings = rawBookings.filter(Boolean);
@@ -171,13 +175,14 @@ async function buildSessionsTable(sessions, justBooked) {
       <td style="text-align:center">${s.booked ? 'Booked' : (isWithinBookingCutoff(s.date, s.time) ? 'Expired' : 'Open')}</td>
       <td class="who">${who}</td>
       <td class="admin-actions">
-        <button class="btn btn-outline btn-sm" data-action="edit" data-id="${s.id}">Edit</button>
+        ${readOnly ? '' : `<button class="btn btn-outline btn-sm" data-action="edit" data-id="${s.id}">Edit</button>
         ${s.booked
           ? `<button class="btn btn-danger btn-sm" data-action="cancel-booking" data-id="${s.id}">Cancel Booking</button>`
-          : `<button class="btn btn-primary btn-sm" data-action="book-for-user" data-id="${s.id}">Book for User</button>`}
+          : `<button class="btn btn-primary btn-sm" data-action="book-for-user" data-id="${s.id}">Book for User</button>`}`}
         <button class="btn btn-danger btn-sm" data-action="delete" data-id="${s.id}">Delete</button>
       </td>
     </tr>
+    ${readOnly ? '' : `
     <tr class="expando-row" id="edit-row-${s.id}" style="display:none">
       <td colspan="6">
         <form class="admin-form" data-edit-id="${s.id}">
@@ -243,7 +248,7 @@ async function buildSessionsTable(sessions, justBooked) {
         </form>
         <div class="alert alert-error" id="bookError-${s.id}" style="display:none"></div>
       </td>
-    </tr>` : ''}`;
+    </tr>` : ''}`}`;
   }));
 
   return `
