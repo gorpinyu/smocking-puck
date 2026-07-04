@@ -15,10 +15,16 @@ const GROUP_NAME = 'Admins';
 // from Amplify's generated Schema type here (that would mean typing this
 // as a union of two incompatible functionHandler signatures, which forces
 // awkward casts for no real safety gain) - instead it's hand-typed with
-// just the fields actually used: `info.fieldName` to dispatch, `arguments`
-// for setAdminRole's input, and `identity` for the self-revoke check.
+// just the fields actually used: `arguments` for setAdminRole's input (and
+// to dispatch - see the handler below) and `identity` for the self-revoke
+// check. An earlier version dispatched on `event.info.fieldName`, assuming
+// the raw AppSync resolver ctx.info shape carried through to the Lambda
+// event - confirmed wrong live (`event.info` was undefined at runtime;
+// Amplify's generated Invoke payload doesn't nest fieldName under `info`).
+// Rather than guess again at its actual undocumented location, dispatch on
+// the one thing we know for certain: only setAdminRole's arguments ever
+// include `username`.
 interface ManageUsersEvent {
-  info: { fieldName: 'listAppUsers' | 'setAdminRole' };
   arguments: { username?: string; makeAdmin?: boolean };
   identity?: { claims?: Record<string, unknown> } | null;
 }
@@ -105,8 +111,8 @@ async function handleSetAdminRole(event: ManageUsersEvent) {
 }
 
 export const handler = async (event: ManageUsersEvent) => {
-  if (event.info.fieldName === 'listAppUsers') {
-    return handleListAppUsers();
+  if ('username' in event.arguments) {
+    return handleSetAdminRole(event);
   }
-  return handleSetAdminRole(event);
+  return handleListAppUsers();
 };

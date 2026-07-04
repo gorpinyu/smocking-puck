@@ -3,8 +3,8 @@ import { defineFunction } from '@aws-amplify/backend';
 // Backs Access Management's listAppUsers query and setAdminRole mutation -
 // lists every Cognito user (with current Admins-group membership) and
 // grants/revokes that membership. One function backs both operations
-// (see handler.ts's fieldName dispatch) since they're tightly coupled and
-// this avoids duplicating the IAM/env wiring below across two functions.
+// (see handler.ts's arguments-shape dispatch) since they're tightly coupled
+// and this avoids duplicating the IAM/env wiring below across two functions.
 //
 // resourceGroupName: 'data' - same reasoning as book-for-user: this function
 // is a data-schema handler (data->function edge, registered in
