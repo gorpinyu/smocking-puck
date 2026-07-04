@@ -4,11 +4,13 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
 import { bookForUserFn } from './functions/book-for-user/resource';
+import { manageUsersFn } from './functions/manage-users/resource';
 
 const backend = defineBackend({
   auth,
   data,
   bookForUserFn,
+  manageUsersFn,
 });
 
 // defineFunction()'s resources.lambda is typed as the CDK IFunction
@@ -34,5 +36,23 @@ bookForUserLambda.addEnvironment('AMPLIFY_AUTH_USERPOOL_ID', backend.auth.resour
 // edge instead of opposing it.
 bookForUserLambda.addToRolePolicy(new PolicyStatement({
   actions: ['cognito-idp:ListUsers'],
+  resources: [backend.auth.resources.userPool.userPoolArn],
+}));
+
+// manage-users (Access Management's listAppUsers/setAdminRole) never touches
+// a DynamoDB table, so unlike bookForUserLambda above it needs no
+// grantReadWriteData/table env vars - just the User Pool ID and the Cognito
+// Admin API permissions it calls directly, granted the same data-stack-role
+// way as above for the same reason (avoids the auth->data edge that would
+// cycle with data's inherent data->auth reference).
+const manageUsersLambda = backend.manageUsersFn.resources.lambda as CdkFunction;
+manageUsersLambda.addEnvironment('AMPLIFY_AUTH_USERPOOL_ID', backend.auth.resources.userPool.userPoolId);
+manageUsersLambda.addToRolePolicy(new PolicyStatement({
+  actions: [
+    'cognito-idp:ListUsers',
+    'cognito-idp:ListUsersInGroup',
+    'cognito-idp:AdminAddUserToGroup',
+    'cognito-idp:AdminRemoveUserFromGroup',
+  ],
   resources: [backend.auth.resources.userPool.userPoolArn],
 }));

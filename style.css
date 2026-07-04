@@ -775,6 +775,12 @@ main { flex: 1; }
 .tab-panel        { display: none; }
 .tab-panel.active { display: block; }
 
+/* .tab-btn was originally only ever a <button> (login.html's Login/Register
+   toggle); the admin sub-nav (session-management.html/access-management.html)
+   reuses the same class on plain <a> links instead - anchors don't inherit
+   a button's centered/no-underline text by default, so restore it here. */
+.tabs a.tab-btn { text-decoration: none; text-align: center; }
+
 /* ALERTS */
 .alert {
   padding: 0.75rem 1rem;

@@ -1,11 +1,24 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 import { bookForUserFn } from '../functions/book-for-user/resource';
+import { manageUsersFn } from '../functions/manage-users/resource';
 
 // Shared across Booking/BookingHistory/bookForUser's arguments+return so
 // there's one GraphQL enum type, not three independently-declared ones.
 const bookingMode = a.enum(['ONE_ON_ONE', 'ONE_ON_TWO']);
 
 const schema = a.schema({
+  // Named as a schema-level type (not inline in .returns()) so listAppUsers
+  // can return an array of it via a.ref('AppUser').array() below -
+  // a.customType({...}).array() isn't a valid chain (confirmed against a
+  // real `ampx sandbox` deploy attempt); array returns of a custom shape
+  // need a named type referenced this way instead.
+  AppUser: a.customType({
+    username: a.string().required(),
+    email: a.string().required(),
+    name: a.string().required(),
+    isAdmin: a.boolean().required(),
+  }),
+
   Session: a
     .model({
       title: a.string().required(),
@@ -131,6 +144,31 @@ const schema = a.schema({
     }))
     .authorization((allow) => [allow.group('Admins')])
     .handler(a.handler.function(bookForUserFn)),
+
+  // Backs Access Management: lists every Cognito user with their current
+  // Admins-group membership. Admins-only, same as bookForUser above - see
+  // amplify/functions/manage-users/handler.ts for how it's assembled.
+  listAppUsers: a
+    .query()
+    .returns(a.ref('AppUser').array())
+    .authorization((allow) => [allow.group('Admins')])
+    .handler(a.handler.function(manageUsersFn)),
+
+  // Grants/revokes Admins-group membership for a given user. Same Lambda as
+  // listAppUsers (manage-users) - see handler.ts for the self-revoke guard
+  // (an admin can't remove their own access through this mutation).
+  setAdminRole: a
+    .mutation()
+    .arguments({
+      username: a.string().required(),
+      makeAdmin: a.boolean().required(),
+    })
+    .returns(a.customType({
+      username: a.string().required(),
+      isAdmin: a.boolean().required(),
+    }))
+    .authorization((allow) => [allow.group('Admins')])
+    .handler(a.handler.function(manageUsersFn)),
 });
 
 export type Schema = ClientSchema<typeof schema>;

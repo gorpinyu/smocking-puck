@@ -1,4 +1,4 @@
-import { client, isAdmin, escapeHtml, formatDate, formatTime, formatDateTime, todayISO, isPastDate, isWithinBookingCutoff, hourSelectOptionsHTML, minuteSelectOptionsHTML, bookingModeLabel, renderNav, renderFooter } from './app.js';
+import { client, isAdmin, escapeHtml, formatDate, formatTime, formatDateTime, todayISO, isPastDate, isWithinBookingCutoff, hourSelectOptionsHTML, minuteSelectOptionsHTML, bookingModeLabel, renderNav, renderFooter, renderAdminTabs } from './app.js';
 
 // Attached immediately (not gated behind the async admin check below) so a
 // submit before that check resolves is handled by our code, not a native
@@ -17,6 +17,7 @@ document.getElementById('addForm').addEventListener('submit', addSession);
   document.getElementById('dashboard').style.display = 'block';
   await renderNav();
   await renderFooter();
+  renderAdminTabs('session-management.html');
 
   document.getElementById('newDate').min = todayISO();
   document.getElementById('newTimeHour').innerHTML = hourSelectOptionsHTML('17');

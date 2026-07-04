@@ -85,6 +85,23 @@ export async function isAdmin() {
   }
 }
 
+// The raw `cognito:username` claim - NOT the same as getCurrentUser().id
+// (which is `sub`). For a plain-email account these happen to match, but a
+// Google-federated user's Username is `google_<id>`, distinct from their
+// sub. access-management.js needs the exact claim value to match against
+// the usernames listAppUsers returns (which come from Cognito's own
+// Username field, same as manage-users/handler.ts's self-revoke check), so
+// it can't use getCurrentUser().id without misidentifying "self" for a
+// Google-signed-in admin.
+export async function getCurrentUsername() {
+  try {
+    const session = await fetchAuthSession();
+    return session.tokens?.accessToken?.payload['cognito:username'] || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function logout() {
   await amplifySignOut();
   window.location.href = 'index.html';
@@ -157,8 +174,13 @@ export async function renderNav() {
   const active = (p) => (page === p ? ' class="active"' : '');
   const firstName = user ? escapeHtml(user.name.split(' ')[0]) : '';
 
-  const adminLink = admin ? `<li><a href="admin.html"${active('admin.html')}>Admin</a></li>` : '';
-  const mobileAdminLink = admin ? `<a href="admin.html">Admin</a>` : '';
+  // Both admin pages (session-management.html, access-management.html) share
+  // this one nav entry point - the tab bar rendered by renderAdminTabs() is
+  // what actually distinguishes between them, so the Admin nav item itself
+  // should read as "active" from either one, not just its literal target.
+  const onAdminPage = page === 'session-management.html' || page === 'access-management.html';
+  const adminLink = admin ? `<li><a href="session-management.html"${onAdminPage ? ' class="active"' : ''}>Admin</a></li>` : '';
+  const mobileAdminLink = admin ? `<a href="session-management.html">Admin</a>` : '';
 
   const desktopAuth = user
     ? `<li><span style="color:rgba(255,255,255,.8);font-weight:600;font-size:.88rem">Hi, ${firstName}!</span></li>
@@ -204,6 +226,27 @@ export async function renderNav() {
   document.querySelectorAll('[data-action="logout"]').forEach((btn) => {
     btn.addEventListener('click', logout);
   });
+}
+
+// Sub-navigation between the two admin pages, shown inside the admin area
+// itself rather than as extra top-level nav links - keeps the main nav at
+// one "Admin" item regardless of role, instead of growing per admin page
+// (see session-management.js/access-management.js, both call this after
+// their own isAdmin() gate passes). Reuses the existing .tabs/.tab-btn CSS
+// (originally built for login.html's Login/Register toggle) - these are
+// plain links, not JS tab-panel toggles, since each "tab" is really a
+// separate page in this static multi-page app.
+export function renderAdminTabs(currentPage) {
+  const placeholder = document.getElementById('admin-tabs-placeholder');
+  if (!placeholder) return;
+
+  const tab = (page, label) => `<a href="${page}" class="tab-btn${page === currentPage ? ' active' : ''}">${label}</a>`;
+
+  placeholder.innerHTML = `
+    <div class="tabs">
+      ${tab('session-management.html', 'Session Management')}
+      ${tab('access-management.html', 'Access Management')}
+    </div>`;
 }
 
 export async function renderFooter() {

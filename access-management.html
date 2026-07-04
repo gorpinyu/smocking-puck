@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Access Management — Smocking Puck</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ACCESS DENIED (shown if not signed in / not an Admin) -->
+  <div class="password-gate" id="accessDenied" style="display:none">
+    <div class="form-card" style="margin:0">
+      <p class="form-title">🔒 Admin Access</p>
+      <p style="text-align:center;color:#666">
+        You need to be signed in with an admin account to view this page.
+      </p>
+      <a href="login.html" class="btn btn-primary form-btn" style="margin-top:1rem;display:block;text-align:center">Log In</a>
+    </div>
+  </div>
+
+  <!-- DASHBOARD (hidden until Admins-group membership is confirmed) -->
+  <div id="dashboard" style="display:none">
+
+    <div id="nav-placeholder"></div>
+
+    <main>
+      <div class="page-header">
+        <h1>Access Management 🔑</h1>
+        <p>Grant or revoke Admin access for registered users.</p>
+      </div>
+
+      <div class="container admin-sections">
+
+        <div id="admin-tabs-placeholder"></div>
+
+        <!-- USERS -->
+        <div class="card">
+          <p class="admin-section-title">Users</p>
+          <div class="alert alert-error" id="usersError" style="display:none"></div>
+          <div id="usersTableWrap"></div>
+        </div>
+
+      </div>
+    </main>
+
+    <div id="footer-placeholder"></div>
+  </div>
+
+  <script type="module" src="access-management.js"></script>
+</body>
+</html>
