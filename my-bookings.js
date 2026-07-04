@@ -12,7 +12,9 @@ import { client, isLoggedIn, escapeHtml, formatDate, formatTime, formatDateTime,
 })();
 
 async function renderHistory() {
-  const { data: events } = await client.models.BookingHistory.list();
+  const { data: rawEvents } = await client.models.BookingHistory.list();
+  // Same AppSync null-item behavior as Session.list() elsewhere.
+  const events = rawEvents.filter(Boolean);
   const wrap = document.getElementById('historyWrap');
 
   if (events.length === 0) {
@@ -44,7 +46,10 @@ async function renderHistory() {
 
 async function renderBookings() {
   const { data: bookings } = await client.models.Booking.list();
-  const upcoming = bookings.filter((b) => !isPastDate(b.sessionDate));
+  // Same AppSync null-item behavior as Session.list() elsewhere (a legacy
+  // row missing a since-added required field) - drop it instead of letting
+  // it crash rendering below.
+  const upcoming = bookings.filter(Boolean).filter((b) => !isPastDate(b.sessionDate));
 
   const sessionResults = await Promise.all(
     upcoming.map((b) => client.models.Session.get({ id: b.sessionId })),

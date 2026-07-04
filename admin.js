@@ -28,7 +28,9 @@ document.getElementById('addForm').addEventListener('submit', addSession);
 })();
 
 async function renderHistory() {
-  const { data: events } = await client.models.BookingHistory.list();
+  const { data: rawEvents } = await client.models.BookingHistory.list();
+  // Same AppSync null-item behavior as Session.list() elsewhere.
+  const events = rawEvents.filter(Boolean);
   const wrap = document.getElementById('historyTableWrap');
 
   if (events.length === 0) {
@@ -416,7 +418,8 @@ async function saveEditSession(id, form) {
 async function cancelBooking(id) {
   if (!confirm("Cancel this session's booking? This frees up the slot without deleting the session itself.")) return;
   const { data: s } = await client.models.Session.get({ id });
-  const { data: bookings } = await client.models.Booking.list({ filter: { sessionId: { eq: id } } });
+  const { data: rawBookings } = await client.models.Booking.list({ filter: { sessionId: { eq: id } } });
+  const bookings = rawBookings.filter(Boolean);
   await Promise.all(bookings.map((b) => client.models.Booking.delete({ id: b.id })));
   await client.models.Session.update({ id, booked: false });
   await Promise.all(bookings.map((b) => client.models.BookingHistory.create({
@@ -479,7 +482,8 @@ async function submitBookForUser(id, form) {
 
 async function deleteSession(id) {
   if (!confirm('Delete this session? All bookings for it will be lost.')) return;
-  const { data: bookings } = await client.models.Booking.list({ filter: { sessionId: { eq: id } } });
+  const { data: rawBookings } = await client.models.Booking.list({ filter: { sessionId: { eq: id } } });
+  const bookings = rawBookings.filter(Boolean);
   await Promise.all(bookings.map((b) => client.models.Booking.delete({ id: b.id })));
   await client.models.Session.delete({ id });
   await renderTable();

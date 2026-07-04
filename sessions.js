@@ -3,7 +3,18 @@ import { client, getCurrentUser, escapeHtml, formatDate, formatTime, isPastDate,
 (async () => {
   await renderNav();
   await renderFooter();
-  await renderSessions();
+  try {
+    await renderSessions();
+  } catch (err) {
+    // Without this, any uncaught error here (e.g. a future null-item
+    // regression) leaves the page silently blank - nav/footer already
+    // rendered, but no cards, no #emptyState, no #loadError, nothing to
+    // debug from. Surface it instead.
+    console.error('renderSessions failed:', err);
+    const el = document.getElementById('loadError');
+    el.textContent = `Couldn't load sessions: ${err.message || 'unknown error'}`;
+    el.style.display = 'block';
+  }
 })();
 
 async function renderSessions() {
@@ -51,8 +62,13 @@ async function renderSessions() {
       client.models.Booking.list(),
       client.models.Player.list(),
     ]);
-    myBookings = bookingsRes.data;
-    myPlayers = playersRes.data.sort((a, b) => a.name.localeCompare(b.name));
+    // Same AppSync null-item behavior as Session.list() above (a legacy row
+    // missing a since-added required field), but Booking/Player never had
+    // this filter - a null entry here crashed buildCard()'s myBookings.some()
+    // before any of sessions.js's own render/error branches could run,
+    // leaving the page blank with no visible error.
+    myBookings = bookingsRes.data.filter(Boolean);
+    myPlayers = playersRes.data.filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
   }
 
   const grid = document.getElementById('sessionsGrid');
@@ -180,7 +196,7 @@ async function bookSession(id, mode, playerName, playerName2) {
   if (!s) return;
 
   const { data: existing } = await client.models.Booking.list();
-  if (existing.some((b) => b.sessionId === id) || s.booked) return;
+  if (existing.filter(Boolean).some((b) => b.sessionId === id) || s.booked) return;
 
   await client.models.Booking.create({
     sessionId: id,

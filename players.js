@@ -16,7 +16,11 @@ document.getElementById('addPlayerForm').addEventListener('submit', addPlayer);
 })();
 
 async function renderPlayers() {
-  const { data: players } = await client.models.Player.list();
+  const { data: rawPlayers } = await client.models.Player.list();
+  // Same AppSync null-item behavior as Session.list() elsewhere (a legacy
+  // row missing a since-added required field) - drop it instead of letting
+  // the sort below crash on a null entry.
+  const players = rawPlayers.filter(Boolean);
   players.sort((a, b) => a.name.localeCompare(b.name));
 
   const list = document.getElementById('playersList');
