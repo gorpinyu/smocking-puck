@@ -2,10 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# Smocking Puck — Hockey Skills Booking Website
+# Smoking Puck — Hockey Skills Booking Website
 
 ## Project Overview
-Teenager-friendly website for booking and cancelling hockey shooting skills sessions for the **Smocking Puck** program. Built with vanilla HTML/CSS/JS pages bundled by Vite, backed by **AWS Amplify Gen 2** (Cognito auth + AppSync/DynamoDB data) — no localStorage, no hardcoded passwords. Mobile-first, light-blue palette (`#4FC3F7`, `#B3E5FC`, `#E1F5FE`), dark-blue text (`#0D47A1`).
+Teenager-friendly website for booking and cancelling hockey shooting skills sessions for the **Smoking Puck** program. Built with vanilla HTML/CSS/JS pages bundled by Vite, backed by **AWS Amplify Gen 2** (Cognito auth + AppSync/DynamoDB data) — no localStorage, no hardcoded passwords. Mobile-first, light-blue palette (`#4FC3F7`, `#B3E5FC`, `#E1F5FE`), dark-blue text (`#0D47A1`) — white/light surfaces (nav, hero, page headers) with blue used as accent/text color rather than large fill backgrounds.
 
 ---
 
@@ -39,6 +39,12 @@ Teenager-friendly website for booking and cancelling hockey shooting skills sess
 | `vite.config.js` | Multi-page build config (one entry per HTML page) |
 
 All page scripts are ES modules (`<script type="module">`) that `import` from `./app.js`.
+
+### Design system
+- **Fonts**: `--font-heading` (`style.css` `:root`) is **Poppins** (weights 700/800/900 + italic cuts), loaded via Google Fonts `<link>` tags repeated identically in all 8 HTML pages' `<head>` — this is the site's first external dependency (previously zero external font/CSS loads). Applies to `h1`/`h2`/`h3`/`.nav-logo-text`/`.footer-logo-text` only; body copy stays on the original system sans-serif stack for performance.
+- Nav, hero, and `.page-header` all use **white/light backgrounds** with dark-navy (`--c-900`) text and blue (`--c-300`–`--c-700`) as accent/button color — not the earlier dark-blue-gradient fills. `.btn-outline` (transparent + blue border) doubles as the light-background "ghost" button style; the old `.btn-ghost` (translucent-white-on-dark) was retired since it assumed a dark surface behind it.
+- `public/hero-player.png` (the homepage hero's dominant visual) is a **customer-supplied illustrated/rendered image, not a licensed photograph** — sourcing real hockey action photos ran into two structural problems worth knowing if this ever needs revisiting: (1) essentially all available stock/Wikimedia hockey action photography ties to an identifiable real player and/or team/sponsor branding (the existing homepage gallery's Wikimedia photos have this same property, but a gallery thumbnail is a much lower-stakes placement than a business's primary marketing hero); (2) a shooting pose with the player also facing the camera is rare in real game photography, since photographers shoot rink-side, not from within the shooting lane.
+- `.card:hover`/`.step:hover` use a plain `translateY` lift, not the earlier `rotateX(...)` 3D tilt — a deliberately more restrained hover than the original, closer to the athletic-brand tone of the current design direction.
 
 ### Dependency split — frontend vs. backend (`package.json`)
 
