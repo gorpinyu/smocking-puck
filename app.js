@@ -182,29 +182,22 @@ export async function renderNav() {
   const adminLink = admin ? `<li><a href="session-management.html"${onAdminPage ? ' class="active"' : ''}>Admin</a></li>` : '';
   const mobileAdminLink = admin ? `<a href="session-management.html">Admin</a>` : '';
 
-  // Guest state shows two separate entry points (plain "Log In" link +
-  // a filled "Create Free Account" pill) rather than one combined
-  // "Login / Register" link - purely presentational, both still land on
-  // login.html (the pill deep-links to its Register tab, same as the
-  // homepage hero's own CTA already did).
   const desktopAuth = user
-    ? `<li><span style="color:rgba(13,71,161,.75);font-weight:600;font-size:.88rem">Hi, ${firstName}!</span></li>
+    ? `<li><span style="color:rgba(255,255,255,.8);font-weight:600;font-size:.88rem">Hi, ${firstName}!</span></li>
        <li><button class="btn-nav" data-action="logout">Logout</button></li>`
-    : `<li><a href="login.html"${active('login.html')}>Log In</a></li>
-       <li><a href="login.html?tab=register" class="btn btn-outline btn-sm">Create Free Account</a></li>`;
+    : `<li><a href="login.html"${active('login.html')}>Login / Register</a></li>`;
 
   const mobileAuth = user
-    ? `<span style="color:rgba(13,71,161,.7);font-size:.85rem;padding:.6rem 0;display:block">Hi, ${firstName}!</span>
+    ? `<span style="color:rgba(255,255,255,.7);font-size:.85rem;padding:.6rem 0;display:block">Hi, ${firstName}!</span>
        <button data-action="logout">Logout</button>`
-    : `<a href="login.html">Log In</a>
-       <a href="login.html?tab=register">Create Free Account</a>`;
+    : `<a href="login.html">Login / Register</a>`;
 
   placeholder.innerHTML = `
     <nav>
       <div class="nav-inner">
         <a href="index.html" class="nav-logo">
           <img src="/logo.png" alt="" class="nav-logo-img" />
-          <span class="nav-logo-text">Smoking <span class="accent-text">Puck</span></span>
+          <span class="nav-logo-text">Smocking <span class="accent-text">Puck</span></span>
         </a>
         <ul class="nav-links">
           <li><a href="sessions.html"${active('sessions.html')}>Sessions</a></li>
@@ -266,7 +259,7 @@ export async function renderFooter() {
         <div class="footer-col footer-brand">
           <a href="index.html" class="footer-logo">
             <img src="/logo.png" alt="" class="footer-logo-img" />
-            <span class="footer-logo-text">Smoking <span class="accent-text">Puck</span></span>
+            <span class="footer-logo-text">Smocking <span class="accent-text">Puck</span></span>
           </a>
           <p>Hockey Skills Sessions</p>
         </div>
@@ -294,7 +287,7 @@ export async function renderFooter() {
         </div>
       </div>
       <div class="footer-bottom">
-        &copy; 2026 Smoking Puck. All rights reserved.
+        &copy; 2026 Smocking Puck. All rights reserved.
       </div>
     </footer>`;
 }
