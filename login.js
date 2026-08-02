@@ -1,8 +1,4 @@
 import { isLoggedIn, renderNav, renderFooter } from './app.js';
-import { signUp, confirmSignUp, resendSignUpCode, signIn, signInWithRedirect } from 'aws-amplify/auth';
-
-let pendingEmail = null;
-let pendingPassword = null;
 
 // Attached immediately (not gated behind the async checks below) so an early
 // submit is handled by our code, not a native full-page form submission that
@@ -14,9 +10,14 @@ document.getElementById('goToLogin').addEventListener('click', (e) => { e.preven
 
 document.getElementById('loginForm').addEventListener('submit', handleLogin);
 document.getElementById('registerForm').addEventListener('submit', handleRegister);
-document.getElementById('verifyForm').addEventListener('submit', handleVerify);
-document.getElementById('resendCode').addEventListener('click', handleResend);
-document.getElementById('googleBtn').addEventListener('click', () => signInWithRedirect({ provider: 'Google' }));
+document.getElementById('googleBtn').addEventListener('click', () => { window.location.href = '/api/auth/google'; });
+
+const GOOGLE_ERROR_MESSAGES = {
+  google_state_mismatch: 'Google sign-in failed (session expired) — please try again.',
+  google_token_exchange: 'Google sign-in failed — please try again.',
+  google_email_unverified: 'That Google account\'s email isn\'t verified — please use a verified account or register with email/password.',
+  google_unexpected: 'Something went wrong signing in with Google — please try again.',
+};
 
 (async () => {
   if (await isLoggedIn()) {
@@ -26,16 +27,21 @@ document.getElementById('googleBtn').addEventListener('click', () => signInWithR
   await renderNav();
   await renderFooter();
 
-  if (new URLSearchParams(window.location.search).get('tab') === 'register') switchTab('register');
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('tab') === 'register') switchTab('register');
+
+  // Set by a failed /api/auth/google redirect (see server/src/routes/auth.js)
+  const googleError = params.get('error');
+  if (googleError) {
+    showError('login-error', GOOGLE_ERROR_MESSAGES[googleError] || 'Google sign-in failed — please try again.');
+  }
 })();
 
 function switchTab(tab) {
-  document.getElementById('tabs').style.display = tab === 'verify' ? 'none' : '';
   document.getElementById('tab-login').classList.toggle('active', tab === 'login');
   document.getElementById('tab-register').classList.toggle('active', tab === 'register');
   document.getElementById('panel-login').classList.toggle('active', tab === 'login');
   document.getElementById('panel-register').classList.toggle('active', tab === 'register');
-  document.getElementById('panel-verify').classList.toggle('active', tab === 'verify');
 }
 
 function showError(id, msg) {
@@ -56,7 +62,14 @@ async function handleLogin(e) {
   const password = document.getElementById('loginPassword').value;
 
   try {
-    await signIn({ username: email, password });
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || 'Login failed.');
     window.location.href = 'sessions.html';
   } catch (err) {
     showError('login-error', err.message || 'Login failed.');
@@ -72,45 +85,19 @@ async function handleRegister(e) {
   const password = document.getElementById('regPassword').value;
 
   try {
-    const { nextStep } = await signUp({
-      username: email,
-      password,
-      options: { userAttributes: { email, name } },
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password }),
     });
-
-    if (nextStep.signUpStep === 'CONFIRM_SIGN_UP') {
-      pendingEmail = email;
-      pendingPassword = password;
-      document.getElementById('verifyEmailLabel').textContent = email;
-      switchTab('verify');
-    } else {
-      window.location.href = 'sessions.html';
-    }
-  } catch (err) {
-    showError('register-error', err.message || 'Registration failed.');
-  }
-}
-
-async function handleVerify(e) {
-  e.preventDefault();
-  clearError('verify-error');
-  const code = document.getElementById('verifyCode').value.trim();
-
-  try {
-    await confirmSignUp({ username: pendingEmail, confirmationCode: code });
-    await signIn({ username: pendingEmail, password: pendingPassword });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || 'Registration failed.');
+    // No email-verification step (self-hosted backend) - registering signs
+    // you in immediately. TODO before any commercial use: add email
+    // verification back (was Cognito's confirm-code step in the AWS version).
     window.location.href = 'sessions.html';
   } catch (err) {
-    showError('verify-error', err.message || 'Verification failed.');
-  }
-}
-
-async function handleResend(e) {
-  e.preventDefault();
-  clearError('verify-error');
-  try {
-    await resendSignUpCode({ username: pendingEmail });
-  } catch (err) {
-    showError('verify-error', err.message || 'Could not resend code.');
+    showError('register-error', err.message || 'Registration failed.');
   }
 }

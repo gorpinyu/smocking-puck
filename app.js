@@ -1,71 +1,94 @@
-import { Amplify } from 'aws-amplify';
-import {
-  getCurrentUser as amplifyGetCurrentUser,
-  fetchUserAttributes,
-  fetchAuthSession,
-  signOut as amplifySignOut,
-  signInWithRedirect,
-} from 'aws-amplify/auth';
-import { generateClient } from 'aws-amplify/data';
-import { Hub } from 'aws-amplify/utils';
-import outputs from './amplify_outputs.json';
+// Self-hosted backend (Express + Postgres on the T480), replacing AWS
+// Cognito/AppSync/DynamoDB. See server/ and CLAUDE.md for the architecture.
+//
+// `client` below is a thin fetch shim over the same call shape the AWS
+// version's `generateClient()` exposed — client.models.X.list/get/create/
+// update/delete, client.queries.*, client.mutations.* — all still resolving
+// to a non-throwing `{ data, errors }`. Every page script below app.js and
+// login.js was written against that shape and is UNCHANGED by this rewrite;
+// keeping the shape (rather than switching call sites to throw/await) was a
+// deliberate choice to minimize the diff and the regression surface.
 
-Amplify.configure(outputs);
+const API_BASE = '/api';
 
-// Real (not discardable) reference to signInWithRedirect, not a call - per-
-// page code-splitting can otherwise tree-shake the OAuth-redirect-completion
-// code out of any page bundle that doesn't reference this import, which left
-// sessions.html (the actual Google OAuth callback target, per
-// amplify/auth/resource.ts's callbackUrls) unable to ever process its own
-// ?code= - only login.js referenced this before, not the shared app.js.
-window.__amplifySignInWithRedirect = signInWithRedirect;
-
-export const client = generateClient();
-
-let cachedUser; // memoized per page load — avoids re-fetching attributes on every call
-
-// signInWithRedirect (Google) completes asynchronously after the browser
-// lands back on the app - the page's own render logic (nav AND main
-// content) may already have run against the pre-redirect (guest) session.
-// A one-time reload re-runs everything against the now-established session.
-// Reload to the bare path (no query string) rather than location.reload() -
-// the ?code=&state= from the OAuth redirect may still be in the URL at this
-// point, and reloading with it still attached makes Amplify try to exchange
-// that single-use code a second time, which fails and leaves the page stuck
-// looking logged-out (silently, since getCurrentUser()'s catch swallows it).
-Hub.listen('auth', ({ payload }) => {
-  if (payload.event === 'signInWithRedirect') {
-    window.location.replace(window.location.pathname);
-  } else if (payload.event === 'signInWithRedirect_failure') {
-    // Logged (not just swallowed) so a failed OAuth code exchange is
-    // diagnosable instead of silently leaving the page looking logged-out.
-    console.error('Google sign-in redirect failed:', payload.data);
+async function apiRequest(method, path, body) {
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method,
+      credentials: 'same-origin',
+      headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    let payload = null;
+    if (res.status !== 204) {
+      try { payload = await res.json(); } catch { /* no/invalid JSON body */ }
+    }
+    if (!res.ok) {
+      return { data: null, errors: [{ message: (payload && payload.error) || `Request failed (${res.status})` }] };
+    }
+    return { data: payload, errors: null };
+  } catch (err) {
+    return { data: null, errors: [{ message: err.message || 'Network error' }] };
   }
-});
-
-// Safety net, not expected to trigger in normal operation: a prior bundling
-// bug (see the signInWithRedirect comment above) once made this call hang
-// forever with no resolve/reject. Kept as insurance against a similar future
-// regression so the page degrades to logged-out instead of freezing.
-function withTimeout(promise, ms) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms)),
-  ]);
 }
+
+// Builds the client.models.<Resource> object for one REST resource. Options
+// the AWS SDK version accepted that have no self-hosted equivalent —
+// `authMode: 'identityPool'` (guest reads; the API just allows GET /sessions
+// unauthenticated) and `selectionSet` (a DynamoDB/AppSync partial-read
+// workaround with nothing to work around here) — are accepted and ignored so
+// call sites didn't need to change.
+function modelClient(resource) {
+  return {
+    list: async (opts = {}) => {
+      const params = new URLSearchParams();
+      if (opts.filter?.sessionId?.eq) params.set('sessionId', opts.filter.sessionId.eq);
+      const qs = params.toString();
+      const { data, errors } = await apiRequest('GET', `/${resource}${qs ? `?${qs}` : ''}`);
+      // Only default a missing `data` to [] on a genuine empty-list success -
+      // on an error, callers (e.g. sessions.js) check `errors?.length && !rawSessions`
+      // and expect `data` to still be falsy.
+      return { data: errors ? data : (data ?? []), errors };
+    },
+    get: ({ id }) => apiRequest('GET', `/${resource}/${id}`),
+    create: (input) => apiRequest('POST', `/${resource}`, input),
+    update: ({ id, ...fields }) => apiRequest('PATCH', `/${resource}/${id}`, fields),
+    delete: ({ id }) => apiRequest('DELETE', `/${resource}/${id}`),
+  };
+}
+
+export const client = {
+  models: {
+    Session: modelClient('sessions'),
+    Booking: modelClient('bookings'),
+    Player: modelClient('players'),
+    BookingHistory: modelClient('booking-history'),
+  },
+  queries: {
+    listAppUsers: () => apiRequest('GET', '/admin/users'),
+  },
+  mutations: {
+    bookForUser: (input) => apiRequest('POST', '/admin/book-for-user', input),
+    setAdminRole: ({ username, makeAdmin }) => apiRequest('POST', `/admin/users/${encodeURIComponent(username)}/admin-role`, { makeAdmin }),
+  },
+};
+
+let cachedUser; // memoized per page load — avoids re-fetching on every call
 
 export async function getCurrentUser() {
   if (cachedUser !== undefined) return cachedUser;
   try {
-    await withTimeout(amplifyGetCurrentUser(), 10000);
-    const attrs = await withTimeout(fetchUserAttributes(), 10000);
-    cachedUser = { id: attrs.sub, name: attrs.name || attrs.email, email: attrs.email };
-  } catch (err) {
-    // A timeout here would mean the safety net above actually triggered -
-    // worth surfacing. A plain "not signed in" (the common guest case) isn't.
-    if (err instanceof Error && err.message.startsWith('timed out')) {
-      console.error('getCurrentUser: Amplify auth call timed out', err);
+    const res = await fetch(`${API_BASE}/auth/me`, { credentials: 'same-origin' });
+    if (!res.ok) {
+      cachedUser = null;
+      return cachedUser;
     }
+    const u = await res.json();
+    cachedUser = {
+      id: u.id, username: u.username, name: u.name || u.email, email: u.email, isAdmin: Boolean(u.isAdmin),
+    };
+  } catch (err) {
+    console.error('getCurrentUser: /api/auth/me request failed', err);
     cachedUser = null;
   }
   return cachedUser;
@@ -76,34 +99,23 @@ export async function isLoggedIn() {
 }
 
 export async function isAdmin() {
-  try {
-    const session = await fetchAuthSession();
-    const groups = session.tokens?.accessToken?.payload['cognito:groups'] || [];
-    return groups.includes('Admins');
-  } catch {
-    return false;
-  }
+  const user = await getCurrentUser();
+  return !!user?.isAdmin;
 }
 
-// The raw `cognito:username` claim - NOT the same as getCurrentUser().id
-// (which is `sub`). For a plain-email account these happen to match, but a
-// Google-federated user's Username is `google_<id>`, distinct from their
-// sub. access-management.js needs the exact claim value to match against
-// the usernames listAppUsers returns (which come from Cognito's own
-// Username field, same as manage-users/handler.ts's self-revoke check), so
-// it can't use getCurrentUser().id without misidentifying "self" for a
-// Google-signed-in admin.
+// The self-hosted backend has no Cognito sub/Username split (that only
+// existed because a Google-federated Cognito user's Username differed from
+// their sub) - a user's id doubles as their "username" everywhere, so this
+// is just getCurrentUser().username. Kept as its own export because
+// access-management.js imports it by this name to match against the
+// `username` field listAppUsers returns.
 export async function getCurrentUsername() {
-  try {
-    const session = await fetchAuthSession();
-    return session.tokens?.accessToken?.payload['cognito:username'] || null;
-  } catch {
-    return null;
-  }
+  const user = await getCurrentUser();
+  return user?.username || null;
 }
 
 export async function logout() {
-  await amplifySignOut();
+  await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'same-origin' });
   window.location.href = 'index.html';
 }
 
@@ -150,9 +162,10 @@ export const formatDate = (dateStr) => {
 // The booker picks the format at booking time - sessions have no fixed mode.
 export const bookingModeLabel = (mode) => (mode === 'ONE_ON_TWO' ? '1-on-2' : '1-on-1');
 
-// For BookingHistory.createdAt (an AWSDateTime string) - unlike session
-// date/time, this is a real instant, so it's fine to let the browser render
-// it in local time via a normal Date object rather than string-splitting.
+// For BookingHistory.createdAt (a real timestamptz, serialized as ISO by the
+// API) - unlike session date/time, this is a real instant, so it's fine to
+// let the browser render it in local time via a normal Date object rather
+// than string-splitting.
 export const formatDateTime = (isoStr) => new Date(isoStr).toLocaleString('en-CA', {
   month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
 });

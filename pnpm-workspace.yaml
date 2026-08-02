@@ -3,8 +3,9 @@ allowBuilds:
   core-js: true
   esbuild: true
 # Lockfile was generated on Windows; without this, pnpm only locks the
-# Windows-native esbuild binary and Amplify Hosting's Linux CI build
-# silently fails when vite invokes esbuild.
+# Windows-native esbuild binary and the Linux Docker build (frontend build
+# stage, ~/services/sites/hockey/Dockerfile on the T480) silently fails when
+# vite invokes esbuild.
 supportedArchitectures:
   os:
     - win32
